@@ -1,7 +1,7 @@
 from typing import Optional, List
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 from app.models.user import UserSession
 from .base import BaseRepository
@@ -25,7 +25,7 @@ class UserSessionRepository(BaseRepository[UserSession]):
             and_(
                 UserSession.user_id == user_id,
                 UserSession.is_active == True,
-                UserSession.expires_at > datetime.utcnow()
+                UserSession.expires_at > datetime.now(UTC)
             )
         ).all()
     
@@ -35,7 +35,7 @@ class UserSessionRepository(BaseRepository[UserSession]):
             and_(
                 UserSession.user_id == user_id,
                 UserSession.is_active == True,
-                UserSession.expires_at > datetime.utcnow()
+                UserSession.expires_at > datetime.now(UTC)
             )
         ).count()
     
@@ -83,7 +83,7 @@ class UserSessionRepository(BaseRepository[UserSession]):
         """Clean up expired sessions"""
         query = self.db.query(UserSession).filter(
             or_(
-                UserSession.expires_at < datetime.utcnow(),
+                UserSession.expires_at < datetime.now(UTC),
                 UserSession.is_active == False
             )
         )
@@ -99,7 +99,7 @@ class UserSessionRepository(BaseRepository[UserSession]):
     def get_expired_sessions(self, user_id: Optional[int] = None) -> List[UserSession]:
         """Get expired sessions"""
         query = self.db.query(UserSession).filter(
-            UserSession.expires_at < datetime.utcnow()
+            UserSession.expires_at < datetime.now(UTC)
         )
         
         if user_id:
@@ -109,11 +109,11 @@ class UserSessionRepository(BaseRepository[UserSession]):
     
     def get_sessions_expiring_soon(self, hours: int = 24) -> List[UserSession]:
         """Get sessions that will expire soon"""
-        soon = datetime.utcnow() + timedelta(hours=hours)
+        soon = datetime.now(UTC) + timedelta(hours=hours)
         return self.db.query(UserSession).filter(
             and_(
                 UserSession.expires_at <= soon,
-                UserSession.expires_at > datetime.utcnow(),
+                UserSession.expires_at > datetime.now(UTC),
                 UserSession.is_active == True
             )
         ).all()
@@ -130,14 +130,14 @@ class UserSessionRepository(BaseRepository[UserSession]):
         
         return (
             session.is_active and 
-            session.expires_at > datetime.utcnow()
+            session.expires_at > datetime.now(UTC)
         )
     
     def extend_session(self, session_id: int, days: int = 7) -> bool:
         """Extend session expiration"""
         session = self.get_by_id(session_id)
         if session and session.is_active:
-            session.expires_at = datetime.utcnow() + timedelta(days=days)
+            session.expires_at = datetime.now(UTC) + timedelta(days=days)
             self.db.commit()
             return True
         return False

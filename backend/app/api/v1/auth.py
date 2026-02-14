@@ -53,7 +53,7 @@ async def register(
         user = user_service.create_user(user_data)
         logger.info(f"Registration success - User ID: {user.id}, Email: {user.email}")
         # Convert SQLAlchemy object to Pydantic response
-        return UserResponse.from_orm(user)
+        return UserResponse.model_validate(user)
     except ValueError as e:
         logger.warning(f"Registration failed - ValueError: {str(e)}")
         raise HTTPException(
@@ -205,7 +205,7 @@ async def get_current_user_profile(
         stats = user_service.get_user_stats(current_user.id)
         
         # Convert user to response model
-        user_response = UserProfile.from_orm(current_user)
+        user_response = UserProfile.model_validate(current_user)
         user_response.deck_count = stats.get("deck_count", 0)
         user_response.total_cards = stats.get("total_cards", 0)
         
@@ -229,7 +229,7 @@ async def update_profile(
     try:
         updated_user = user_service.update_user(current_user.id, user_update)
         # Convert SQLAlchemy object to Pydantic response
-        return UserResponse.from_orm(updated_user)
+        return UserResponse.model_validate(updated_user)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
