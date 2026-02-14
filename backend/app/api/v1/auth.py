@@ -449,7 +449,8 @@ async def reset_password(
         from app.schemas.user import UserPasswordChange
         password_change = UserPasswordChange(
             current_password="",  # Not needed for reset
-            new_password=reset_data.new_password
+            new_password=reset_data.new_password,
+            confirm_password=reset_data.new_password
         )
         user_service.change_password(user.id, password_change)
         

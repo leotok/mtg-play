@@ -91,11 +91,14 @@ class GameService:
         public_games = self.game_repo.get_public_waiting_games()
         user_games = self.game_repo.get_user_games(current_user.id)
         
+        user_game_ids = {game.id for game in user_games}
+        
         all_games = {game.id: game for game in public_games + user_games}
         
         result = []
         for game in all_games.values():
             current_players = self.player_repo.count_accepted(game.id)
+            is_in_game = game.id in user_game_ids
             result.append(GameRoomListItem(
                 id=game.id,
                 name=game.name,
@@ -107,6 +110,7 @@ class GameService:
                 power_bracket=game.power_bracket,
                 status=game.status,
                 created_at=game.created_at,
+                is_in_game=is_in_game,
             ))
         return result
     

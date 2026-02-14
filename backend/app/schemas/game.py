@@ -76,6 +76,7 @@ class GameRoomListItem(BaseModel):
     power_bracket: PowerBracket
     status: GameStatus
     created_at: datetime
+    is_in_game: bool = False
 
 
 class JoinResponse(BaseModel):
