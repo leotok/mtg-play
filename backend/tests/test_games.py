@@ -311,3 +311,135 @@ class TestDeckSelection:
             "deck_id": 99999
         })
         assert response.status_code == 404
+
+
+class TestPendingPlayers:
+    """Test pending player functionality."""
+
+    def test_join_game_already_in_game(self, client, test_user):
+        """Test joining when already in game fails."""
+        game_data = {
+            "name": "Already In Game Test",
+            "is_public": True,
+            "max_players": 4,
+            "power_bracket": "casual",
+        }
+        create_response = client.post("/api/v1/games", json=game_data)
+        game_id = create_response.json()["id"]
+
+        join_response = client.post(f"/api/v1/games/{game_id}/join")
+        assert join_response.status_code == 400
+        assert "already" in join_response.json()["detail"].lower()
+
+    def test_join_game_full(self, client, test_user):
+        """Test joining a full game fails."""
+        game_data = {
+            "name": "Full Game Test",
+            "is_public": True,
+            "max_players": 2,
+            "power_bracket": "casual",
+        }
+        create_response = client.post("/api/v1/games", json=game_data)
+        game_id = create_response.json()["id"]
+
+        response = client.post(f"/api/v1/games/{game_id}/join")
+        assert response.status_code == 400
+        assert "already" in response.json()["detail"].lower()
+
+    def test_join_game_already_started(self, client, test_user):
+        """Test joining a game that already started fails."""
+        game_data = {
+            "name": "Started Game Test",
+            "is_public": True,
+            "max_players": 4,
+            "power_bracket": "casual",
+        }
+        create_response = client.post("/api/v1/games", json=game_data)
+        game_id = create_response.json()["id"]
+
+        response = client.post(f"/api/v1/games/{game_id}/join")
+        assert response.status_code == 400
+        assert "already" in response.json()["detail"].lower()
+
+    def test_join_nonexistent_game(self, client, test_user):
+        """Test joining nonexistent game returns 404."""
+        response = client.post("/api/v1/games/99999/join")
+        assert response.status_code == 404
+
+
+class TestPlayerAcceptance:
+    """Test accepting and rejecting players."""
+
+    def test_accept_nonexistent_player_not_pending(self, client, test_user):
+        """Test accepting a non-pending player fails."""
+        game_data = {
+            "name": "Not Pending Test",
+            "is_public": True,
+            "max_players": 4,
+            "power_bracket": "casual",
+        }
+        create_response = client.post("/api/v1/games", json=game_data)
+        game_id = create_response.json()["id"]
+
+        game_response = client.get(f"/api/v1/games/{game_id}")
+        players = game_response.json()["players"]
+        host_player = [p for p in players if p["is_host"]][0]
+
+        response = client.post(f"/api/v1/games/{game_id}/accept/{host_player['id']}")
+        assert response.status_code == 400
+        assert "pending" in response.json()["detail"].lower()
+
+    def test_non_host_cannot_accept(self, client, test_user):
+        """Test non-host cannot accept players."""
+        game_data = {
+            "name": "Non-host Accept Test",
+            "is_public": True,
+            "max_players": 4,
+            "power_bracket": "casual",
+        }
+        create_response = client.post("/api/v1/games", json=game_data)
+        game_id = create_response.json()["id"]
+
+        game_response = client.get(f"/api/v1/games/{game_id}")
+        players = game_response.json()["players"]
+        host_player = [p for p in players if p["is_host"]][0]
+
+        response = client.post(f"/api/v1/games/{game_id}/accept/{host_player['id']}")
+        assert response.status_code == 400
+
+    def test_reject_nonexistent_player_not_pending(self, client, test_user):
+        """Test rejecting a non-pending player fails."""
+        game_data = {
+            "name": "Reject Not Pending Test",
+            "is_public": True,
+            "max_players": 4,
+            "power_bracket": "casual",
+        }
+        create_response = client.post("/api/v1/games", json=game_data)
+        game_id = create_response.json()["id"]
+
+        game_response = client.get(f"/api/v1/games/{game_id}")
+        players = game_response.json()["players"]
+        host_player = [p for p in players if p["is_host"]][0]
+
+        response = client.post(f"/api/v1/games/{game_id}/reject/{host_player['id']}")
+        assert response.status_code == 400
+        assert "pending" in response.json()["detail"].lower()
+
+    def test_non_host_cannot_reject(self, client, test_user):
+        """Test non-host cannot reject players."""
+        game_data = {
+            "name": "Non-host Reject Test",
+            "is_public": True,
+            "max_players": 4,
+            "power_bracket": "casual",
+        }
+        create_response = client.post("/api/v1/games", json=game_data)
+        game_id = create_response.json()["id"]
+
+        game_response = client.get(f"/api/v1/games/{game_id}")
+        players = game_response.json()["players"]
+        host_player = [p for p in players if p["is_host"]][0]
+
+        response = client.post(f"/api/v1/games/{game_id}/reject/{host_player['id']}")
+        assert response.status_code == 400
