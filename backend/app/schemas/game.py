@@ -77,6 +77,7 @@ class GameRoomListItem(BaseModel):
     status: GameStatus
     created_at: datetime
     is_in_game: bool = False
+    is_host: bool = False
 
 
 class JoinResponse(BaseModel):

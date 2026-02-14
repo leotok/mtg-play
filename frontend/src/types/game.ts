@@ -54,6 +54,8 @@ export interface GameRoomListItem {
   power_bracket: PowerBracket;
   status: GameStatus;
   created_at: string;
+  is_in_game: boolean;
+  is_host: boolean;
 }
 
 export interface GameRoomCreate {

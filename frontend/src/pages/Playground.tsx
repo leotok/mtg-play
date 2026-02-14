@@ -24,11 +24,11 @@ const Playground: React.FC = () => {
       const games = response as GameRoomListItem[];
       
       // Filter games where user is host or player (including in_progress)
-      const userGames = games.filter((g) => g.status === 'waiting' || g.status === 'in_progress');
+      const userGames = games.filter((g) => (g.is_host || g.is_in_game) && (g.status === 'waiting' || g.status === 'in_progress'));
       setMyGames(userGames);
       
-      // Public games not hosted by current user (only waiting)
-      const publicOnly = games.filter((g) => g.is_public && g.status === 'waiting');
+      // Public games not hosted by current user and not already in (only waiting)
+      const publicOnly = games.filter((g) => g.is_public && g.status === 'waiting' && !g.is_host && !g.is_in_game);
       setPublicGames(publicOnly);
     } catch (error) {
       console.error('Failed to fetch games:', error);
@@ -102,11 +102,7 @@ const Playground: React.FC = () => {
     const canJoin = !isHost && !isInGame && !isFull;
 
     const handleClick = () => {
-      if (isHost || isInGame) {
-        handleViewGame(game.id);
-      } else if (!isFull) {
-        handleJoinGame(game);
-      }
+      handleViewGame(game.id);
     };
 
     return (

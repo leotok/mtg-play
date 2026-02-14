@@ -99,6 +99,7 @@ class GameService:
         for game in all_games.values():
             current_players = self.player_repo.count_accepted(game.id)
             is_in_game = game.id in user_game_ids
+            is_host = game.host_id == current_user.id
             result.append(GameRoomListItem(
                 id=game.id,
                 name=game.name,
@@ -111,6 +112,7 @@ class GameService:
                 status=game.status,
                 created_at=game.created_at,
                 is_in_game=is_in_game,
+                is_host=is_host,
             ))
         return result
     
