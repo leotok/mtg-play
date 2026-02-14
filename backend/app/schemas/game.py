@@ -1,17 +1,16 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 from app.models.game import PowerBracket, GameStatus, PlayerStatus
 
 
 class DeckInfo(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     commander_name: Optional[str] = None
     commander_image_uris: Optional[dict] = None
-
-    class Config:
-        from_attributes = True
 
 
 class GameRoomCreate(BaseModel):
@@ -35,6 +34,8 @@ class DeckSelectionRequest(BaseModel):
 
 
 class GameRoomPlayerResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     user_id: int
     username: str
@@ -44,11 +45,10 @@ class GameRoomPlayerResponse(BaseModel):
     deck: Optional[DeckInfo] = None
     joined_at: datetime
 
-    class Config:
-        from_attributes = True
-
 
 class GameRoomResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     description: Optional[str]
@@ -62,11 +62,10 @@ class GameRoomResponse(BaseModel):
     players: List[GameRoomPlayerResponse]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
-
 
 class GameRoomListItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     description: Optional[str]
@@ -77,9 +76,6 @@ class GameRoomListItem(BaseModel):
     power_bracket: PowerBracket
     status: GameStatus
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class JoinResponse(BaseModel):

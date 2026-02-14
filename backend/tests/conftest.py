@@ -49,21 +49,95 @@ def create_mock_scryfall_service():
         "colors": ["W"],
         "color_identity": ["W"],
     }
+    plains_data = {
+        "id": "test-plains-scryfall-id",
+        "name": "Plains",
+        "mana_cost": "",
+        "cmc": 0,
+        "type_line": "Basic Land — Plains",
+        "colors": [],
+        "color_identity": ["W"],
+    }
+    island_data = {
+        "id": "test-island-scryfall-id",
+        "name": "Island",
+        "mana_cost": "",
+        "cmc": 0,
+        "type_line": "Basic Land — Island",
+        "colors": [],
+        "color_identity": ["U"],
+    }
+    swamp_data = {
+        "id": "test-swamp-scryfall-id",
+        "name": "Swamp",
+        "mana_cost": "",
+        "cmc": 0,
+        "type_line": "Basic Land — Swamp",
+        "colors": [],
+        "color_identity": ["B"],
+    }
+    mountain_data = {
+        "id": "test-mountain-scryfall-id",
+        "name": "Mountain",
+        "mana_cost": "",
+        "cmc": 0,
+        "type_line": "Basic Land — Mountain",
+        "colors": [],
+        "color_identity": ["R"],
+    }
+    forest_data = {
+        "id": "test-forest-scryfall-id",
+        "name": "Forest",
+        "mana_cost": "",
+        "cmc": 0,
+        "type_line": "Basic Land — Forest",
+        "colors": [],
+        "color_identity": ["G"],
+    }
 
     mock.validate_commander = AsyncMock(return_value={"valid": True, "card": commander_data})
+    
     def get_card_by_id(card_id):
         if "commander" in str(card_id):
             return commander_data
+        if "plains" in str(card_id).lower():
+            return plains_data
+        if "island" in str(card_id).lower():
+            return island_data
+        if "swamp" in str(card_id).lower():
+            return swamp_data
+        if "mountain" in str(card_id).lower():
+            return mountain_data
+        if "forest" in str(card_id).lower():
+            return forest_data
         return card_data
 
     mock.get_card_by_scryfall_id = AsyncMock(side_effect=get_card_by_id)
     mock.get_card_by_name = AsyncMock(return_value=commander_data)
-    mock.get_multiple_cards = AsyncMock(
-        return_value={
-            "test-commander-scryfall-id": commander_data,
-            "test-card-scryfall-id": card_data,
-        }
-    )
+    
+    def get_multiple_cards(card_names, by_name=False):
+        result = {}
+        for name in card_names:
+            name_lower = name.lower()
+            if "commander" in name_lower:
+                result[name] = commander_data
+            elif name_lower == "test card":
+                result[name] = card_data
+            elif name_lower == "plains":
+                result[name] = plains_data
+            elif name_lower == "island":
+                result[name] = island_data
+            elif name_lower == "swamp":
+                result[name] = swamp_data
+            elif name_lower == "mountain":
+                result[name] = mountain_data
+            elif name_lower == "forest":
+                result[name] = forest_data
+            else:
+                result[name] = card_data
+        return result
+
+    mock.get_multiple_cards = AsyncMock(side_effect=get_multiple_cards)
     return mock
 
 
@@ -71,7 +145,9 @@ def create_mock_scryfall_service():
 def mock_scryfall():
     """Patch Scryfall service for all tests."""
     mock = create_mock_scryfall_service()
-    with patch("app.services.deck_service.get_scryfall_service", return_value=mock):
+    with patch("app.services.deck_service.get_scryfall_service", return_value=mock), \
+         patch("app.services.scryfall.get_scryfall_service", return_value=mock), \
+         patch("app.api.v1.decks.get_scryfall_service", return_value=mock):
         yield mock
 
 
@@ -100,6 +176,22 @@ def test_user(setup_test_database):
     return user
 
 
+@pytest.fixture(scope="module")
+def test_user2(setup_test_database):
+    """Create a second test user for player interaction tests."""
+    db = TestingSessionLocal()
+    user = User(
+        email="test2@example.com",
+        username="testuser2",
+        hashed_password="hashed_password",
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    db.close()
+    return user
+
+
 @pytest.fixture(scope="module", autouse=True)
 def override_auth(test_user):
     """Override get_current_user to return test user."""
@@ -113,6 +205,23 @@ def override_auth(test_user):
             db.close()
 
     app.dependency_overrides[get_current_user] = _override_get_current_user
+    yield
+    if get_current_user in app.dependency_overrides:
+        del app.dependency_overrides[get_current_user]
+
+
+@pytest.fixture
+def as_user2():
+    """Temporarily override auth to use test_user2."""
+    async def _override_user2():
+        db = TestingSessionLocal()
+        try:
+            user = db.query(User).filter(User.username == "testuser2").first()
+            return user
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_current_user] = _override_user2
     yield
     if get_current_user in app.dependency_overrides:
         del app.dependency_overrides[get_current_user]

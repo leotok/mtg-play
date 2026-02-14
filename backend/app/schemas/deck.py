@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 
@@ -24,6 +24,8 @@ class DeckUpdate(BaseModel):
 
 
 class CardBasic(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     scryfall_id: str
     name: str
     mana_cost: Optional[str]
@@ -31,24 +33,22 @@ class CardBasic(BaseModel):
     type_line: str
     colors: Optional[List[str]]
     color_identity: Optional[List[str]]
-    
-    class Config:
-        from_attributes = True
 
 
 class DeckResponse(DeckBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     owner_id: int
     created_at: datetime
     updated_at: Optional[datetime]
     cards: List[DeckCardResponse] = []
     commander: Optional[CardBasic] = None
-    
-    class Config:
-        from_attributes = True
 
 
 class DeckList(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     description: Optional[str]
@@ -58,9 +58,6 @@ class DeckList(BaseModel):
     commander: Optional[CardBasic] = None
     commander_image_uris: Optional[dict] = None
     color_identity: Optional[List[str]] = None
-    
-    class Config:
-        from_attributes = True
 
 
 class DeckStats(BaseModel):

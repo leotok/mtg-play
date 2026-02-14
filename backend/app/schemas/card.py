@@ -1,10 +1,12 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 
 class CardBasic(BaseModel):
     """Basic card information for gameplay"""
+    model_config = ConfigDict(from_attributes=False)
+
     scryfall_id: str
     name: str
     mana_cost: Optional[str]
@@ -18,22 +20,18 @@ class CardBasic(BaseModel):
     loyalty: Optional[str]
     image_uris: Optional[Dict[str, str]]
     legalities: Optional[Dict[str, str]]
-    
-    class Config:
-        from_attributes = False
 
 
 class CardSearchResult(BaseModel):
     """Card search result"""
+    model_config = ConfigDict(from_attributes=False)
+
     scryfall_id: str
     name: str
     mana_cost: Optional[str]
     type_line: str
     colors: Optional[List[str]]
     image_uris: Optional[Dict[str, str]]
-    
-    class Config:
-        from_attributes = False
 
 
 class CardValidationResult(BaseModel):

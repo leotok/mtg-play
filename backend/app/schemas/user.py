@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field, EmailStr, validator
+from pydantic import BaseModel, Field, EmailStr, field_validator
 from typing import Optional
 from datetime import datetime
+from pydantic import ConfigDict
 
 
 class UserBase(BaseModel):
@@ -15,13 +16,15 @@ class UserCreate(UserBase):
     password: str = Field(..., description="User password")
     confirm_password: str = Field(..., description="Password confirmation")
     
-    @validator('confirm_password')
-    def passwords_match(cls, v, values):
-        if 'password' in values and v != values['password']:
+    @field_validator('confirm_password')
+    @classmethod
+    def passwords_match(cls, v, info):
+        if 'password' in info.data and v != info.data['password']:
             raise ValueError('Passwords do not match')
         return v
     
-    @validator('username')
+    @field_validator('username')
+    @classmethod
     def validate_username(cls, v):
         if not v.replace('_', '').replace('-', '').isalnum():
             raise ValueError('Username can only contain letters, numbers, underscores, and hyphens')
@@ -40,7 +43,8 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = Field(None, description="User email address")
     is_active: Optional[bool] = Field(None, description="Whether the user is active")
     
-    @validator('username')
+    @field_validator('username')
+    @classmethod
     def validate_username(cls, v):
         if v is not None and not v.replace('_', '').replace('-', '').isalnum():
             raise ValueError('Username can only contain letters, numbers, underscores, and hyphens')
@@ -53,9 +57,10 @@ class UserPasswordChange(BaseModel):
     new_password: str = Field(..., min_length=8, max_length=128, description="New password")
     confirm_password: str = Field(..., description="Confirm new password")
     
-    @validator('confirm_password')
-    def passwords_match(cls, v, values):
-        if 'new_password' in values and v != values['new_password']:
+    @field_validator('confirm_password')
+    @classmethod
+    def passwords_match(cls, v, info):
+        if 'new_password' in info.data and v != info.data['new_password']:
             raise ValueError('Passwords do not match')
         return v
 
@@ -70,32 +75,31 @@ class UserPasswordResetConfirm(BaseModel):
     new_password: str = Field(..., min_length=8, max_length=128, description="New password")
     confirm_password: str = Field(..., description="Confirm new password")
     
-    @validator('confirm_password')
-    def passwords_match(cls, v, values):
-        if 'new_password' in values and v != values['new_password']:
+    @field_validator('confirm_password')
+    @classmethod
+    def passwords_match(cls, v, info):
+        if 'new_password' in info.data and v != info.data['new_password']:
             raise ValueError('Passwords do not match')
         return v
         
 
 class UserResponse(UserBase):
     """User response schema"""
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     created_at: datetime
     updated_at: Optional[datetime]
     last_login: Optional[datetime]
     email_verified: bool
-    
-    class Config:
-        from_attributes = True
 
 
 class UserProfile(UserResponse):
     """Extended user profile schema"""
+    model_config = ConfigDict(from_attributes=True)
+
     deck_count: Optional[int] = Field(0, description="Number of decks owned by user")
     total_cards: Optional[int] = Field(0, description="Total cards across all decks")
-    
-    class Config:
-        from_attributes = True
 
 
 class Token(BaseModel):
@@ -138,14 +142,13 @@ class UserActivity(BaseModel):
 
 class UserPreferences(BaseModel):
     """User preferences schema"""
+    model_config = ConfigDict(from_attributes=True)
+
     theme: str = "light"
     language: str = "en"
     notifications_enabled: bool = True
     public_profile: bool = False
     favorite_colors: list[str] = []
-    
-    class Config:
-        from_attributes = True
 
 
 # Validation schemas for requests
@@ -158,7 +161,8 @@ class UsernameValidation(BaseModel):
     """Username validation schema"""
     username: str = Field(..., min_length=3, max_length=50, description="Username to validate")
     
-    @validator('username')
+    @field_validator('username')
+    @classmethod
     def validate_username(cls, v):
         if not v.replace('_', '').replace('-', '').isalnum():
             raise ValueError('Username can only contain letters, numbers, underscores, and hyphens')
@@ -169,7 +173,8 @@ class PasswordStrengthCheck(BaseModel):
     """Password strength check schema"""
     password: str = Field(..., description="Password to check strength")
     
-    @validator('password')
+    @field_validator('password')
+    @classmethod
     def validate_password_format(cls, v):
         if len(v) < 1:
             raise ValueError('Password cannot be empty')
@@ -203,15 +208,14 @@ class PasswordStrengthResponse(BaseModel):
 # Session management schemas
 class UserSession(BaseModel):
     """User session schema"""
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     user_id: int
     refresh_token: str
     expires_at: datetime
     created_at: datetime
     is_active: bool
-    
-    class Config:
-        from_attributes = True
 
 
 class SessionCreate(BaseModel):
@@ -223,14 +227,13 @@ class SessionCreate(BaseModel):
 
 class SessionResponse(BaseModel):
     """Session response schema"""
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     user_id: int
     expires_at: datetime
     created_at: datetime
     is_active: bool
-    
-    class Config:
-        from_attributes = True
 
 
 # Error response schemas
