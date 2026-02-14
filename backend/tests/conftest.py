@@ -39,6 +39,12 @@ def create_mock_scryfall_service():
         "type_line": "Legendary Creature — Human Knight",
         "colors": ["W", "U", "B", "R", "G"],
         "color_identity": ["W", "U", "B", "R", "G"],
+        "oracle_text": "Flying",
+        "power": "5",
+        "toughness": "5",
+        "loyalty": None,
+        "image_uris": {"normal": "http://example.com/commander.jpg"},
+        "legalities": {"commander": "legal"},
     }
     card_data = {
         "id": "test-card-scryfall-id",
@@ -48,6 +54,12 @@ def create_mock_scryfall_service():
         "type_line": "Instant",
         "colors": ["W"],
         "color_identity": ["W"],
+        "oracle_text": "Destroy target creature",
+        "power": None,
+        "toughness": None,
+        "loyalty": None,
+        "image_uris": {"normal": "http://example.com/card.jpg"},
+        "legalities": {"commander": "legal"},
     }
     plains_data = {
         "id": "test-plains-scryfall-id",
@@ -57,6 +69,12 @@ def create_mock_scryfall_service():
         "type_line": "Basic Land — Plains",
         "colors": [],
         "color_identity": ["W"],
+        "oracle_text": None,
+        "power": None,
+        "toughness": None,
+        "loyalty": None,
+        "image_uris": None,
+        "legalities": {"commander": "legal"},
     }
     island_data = {
         "id": "test-island-scryfall-id",
@@ -66,6 +84,12 @@ def create_mock_scryfall_service():
         "type_line": "Basic Land — Island",
         "colors": [],
         "color_identity": ["U"],
+        "oracle_text": None,
+        "power": None,
+        "toughness": None,
+        "loyalty": None,
+        "image_uris": None,
+        "legalities": {"commander": "legal"},
     }
     swamp_data = {
         "id": "test-swamp-scryfall-id",
@@ -75,6 +99,12 @@ def create_mock_scryfall_service():
         "type_line": "Basic Land — Swamp",
         "colors": [],
         "color_identity": ["B"],
+        "oracle_text": None,
+        "power": None,
+        "toughness": None,
+        "loyalty": None,
+        "image_uris": None,
+        "legalities": {"commander": "legal"},
     }
     mountain_data = {
         "id": "test-mountain-scryfall-id",
@@ -84,6 +114,12 @@ def create_mock_scryfall_service():
         "type_line": "Basic Land — Mountain",
         "colors": [],
         "color_identity": ["R"],
+        "oracle_text": None,
+        "power": None,
+        "toughness": None,
+        "loyalty": None,
+        "image_uris": None,
+        "legalities": {"commander": "legal"},
     }
     forest_data = {
         "id": "test-forest-scryfall-id",
@@ -93,6 +129,12 @@ def create_mock_scryfall_service():
         "type_line": "Basic Land — Forest",
         "colors": [],
         "color_identity": ["G"],
+        "oracle_text": None,
+        "power": None,
+        "toughness": None,
+        "loyalty": None,
+        "image_uris": None,
+        "legalities": {"commander": "legal"},
     }
 
     mock.validate_commander = AsyncMock(return_value={"valid": True, "card": commander_data})
@@ -114,6 +156,7 @@ def create_mock_scryfall_service():
 
     mock.get_card_by_scryfall_id = AsyncMock(side_effect=get_card_by_id)
     mock.get_card_by_name = AsyncMock(return_value=commander_data)
+    mock.search_cards = AsyncMock(return_value=[])
     
     def get_multiple_cards(card_names, by_name=False):
         result = {}
@@ -147,7 +190,8 @@ def mock_scryfall():
     mock = create_mock_scryfall_service()
     with patch("app.services.deck_service.get_scryfall_service", return_value=mock), \
          patch("app.services.scryfall.get_scryfall_service", return_value=mock), \
-         patch("app.api.v1.decks.get_scryfall_service", return_value=mock):
+         patch("app.api.v1.decks.get_scryfall_service", return_value=mock), \
+         patch("app.api.v1.cards.get_scryfall_service", return_value=mock):
         yield mock
 
 

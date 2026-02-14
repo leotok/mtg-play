@@ -51,7 +51,12 @@ async def get_card_by_scryfall_id(scryfall_id: str):
             type_line=scryfall_data.get("type_line"),
             colors=scryfall_data.get("colors"),
             color_identity=scryfall_data.get("color_identity"),
-            image_uris=scryfall_data.get("image_uris")
+            oracle_text=scryfall_data.get("oracle_text"),
+            power=scryfall_data.get("power"),
+            toughness=scryfall_data.get("toughness"),
+            loyalty=scryfall_data.get("loyalty"),
+            image_uris=scryfall_data.get("image_uris"),
+            legalities=scryfall_data.get("legalities")
         )
     except HTTPException:
         raise
@@ -87,7 +92,12 @@ async def lookup_card(request: CardLookupRequest):
             type_line=scryfall_data.get("type_line"),
             colors=scryfall_data.get("colors"),
             color_identity=scryfall_data.get("color_identity"),
-            image_uris=scryfall_data.get("image_uris")
+            oracle_text=scryfall_data.get("oracle_text"),
+            power=scryfall_data.get("power"),
+            toughness=scryfall_data.get("toughness"),
+            loyalty=scryfall_data.get("loyalty"),
+            image_uris=scryfall_data.get("image_uris"),
+            legalities=scryfall_data.get("legalities")
         )
     except HTTPException:
         raise

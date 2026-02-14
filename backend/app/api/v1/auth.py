@@ -60,6 +60,8 @@ async def register(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Registration error - Email: {user_data.email}, Error: {str(e)}", exc_info=True)
         raise HTTPException(
@@ -116,6 +118,8 @@ async def login(
             detail=str(e),
             headers={"WWW-Authenticate": "Bearer"},
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Login error - Email: {user_login.email}, Error: {str(e)}", exc_info=True)
         raise HTTPException(
@@ -181,6 +185,8 @@ async def refresh_token(
             "expires_in": int(access_token_expires.total_seconds())
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -204,6 +210,8 @@ async def get_current_user_profile(
         user_response.total_cards = stats.get("total_cards", 0)
         
         return user_response
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -227,6 +235,8 @@ async def update_profile(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -256,6 +266,8 @@ async def change_password(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -274,6 +286,8 @@ async def logout(
         revoked_count = user_service.revoke_all_sessions(current_user.id)
         
         return {"message": f"Logged out successfully. Revoked {revoked_count} sessions."}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -307,6 +321,8 @@ async def validate_email_endpoint(
             is_available=is_available,
             message=None if is_available else "Email already registered"
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -338,6 +354,8 @@ async def validate_username_endpoint(
             is_available=is_available,
             message=None if is_available else "Username already taken"
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -362,6 +380,8 @@ async def check_password_strength_endpoint(
             feedback=result["feedback"],
             suggestions=result["suggestions"]
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -393,6 +413,8 @@ async def forgot_password(
         
         return {"message": "If an account with that email exists, a password reset link has been sent."}
         
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -438,6 +460,8 @@ async def reset_password(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -458,6 +482,8 @@ async def get_user_sessions(
             "active_sessions": active_sessions_count,
             "user_id": current_user.id
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -475,6 +501,8 @@ async def revoke_all_sessions(
         revoked_count = user_service.revoke_all_sessions(current_user.id)
         
         return {"message": f"Revoked {revoked_count} sessions. Please login again."}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
