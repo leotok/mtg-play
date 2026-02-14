@@ -1,13 +1,12 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { DeckDetail } from '../../types/deck';
-import { ArrowLeftIcon, PencilIcon, DocumentArrowUpIcon, TrashIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, PencilIcon, TrashIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { ColorBadge } from '../../utils/colors';
 
 interface DeckHeaderProps {
   deck: DeckDetail;
   onEdit: () => void;
-  onImport: () => void;
   onDelete: () => void;
   onValidate: () => void;
   isValidating: boolean;
@@ -17,7 +16,6 @@ interface DeckHeaderProps {
 const DeckHeader: React.FC<DeckHeaderProps> = ({
   deck,
   onEdit,
-  onImport,
   onDelete,
   onValidate,
   isValidating,
@@ -83,14 +81,6 @@ const DeckHeader: React.FC<DeckHeaderProps> = ({
           >
             <PencilIcon className="h-4 w-4" />
             <span>Edit Info</span>
-          </button>
-
-          <button
-            onClick={onImport}
-            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-400 hover:to-emerald-400 rounded-lg transition-all"
-          >
-            <DocumentArrowUpIcon className="h-4 w-4" />
-            <span>Import List</span>
           </button>
 
           <button

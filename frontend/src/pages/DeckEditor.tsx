@@ -9,7 +9,7 @@ import PageHeader from '../components/common/PageHeader';
 import type { DeckDetail, DeckCard } from '../types/deck';
 import { apiClient } from '../services/apiClient';
 import { useAuth } from '../context/AuthContext';
-import { PlusIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, ArrowLeftIcon, XCircleIcon } from '@heroicons/react/24/outline';
 
 const DeckEditor: React.FC = () => {
   const { deckId } = useParams<{ deckId: string }>();
@@ -143,6 +143,22 @@ const DeckEditor: React.FC = () => {
     }
   };
 
+  const handleClearDeck = async () => {
+    if (!deck) return;
+    
+    if (!window.confirm(`Are you sure you want to remove all cards from "${deck.name}"? The commander will remain.`)) {
+      return;
+    }
+    
+    try {
+      await apiClient.delete(`/decks/${deck.id}/cards`);
+      fetchDeck(parseInt(deckId!));
+    } catch (err) {
+      console.error('Failed to clear deck:', err);
+      alert('Failed to clear deck');
+    }
+  };
+
   const handleCardsChanged = () => {
     if (deckId) {
       fetchDeck(parseInt(deckId));
@@ -186,7 +202,6 @@ const DeckEditor: React.FC = () => {
         <DeckHeader
           deck={deck}
           onEdit={() => setIsEditModalOpen(true)}
-          onImport={() => setIsImportModalOpen(true)}
           onDelete={handleDeleteDeck}
           onValidate={handleValidateDeck}
           isValidating={isValidating}
@@ -197,6 +212,13 @@ const DeckEditor: React.FC = () => {
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <h2 className="text-2xl font-bold text-white">Cards</h2>
           <div className="flex space-x-3">
+            <button
+              onClick={handleClearDeck}
+              className="flex items-center space-x-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-gray-200 transition-colors"
+            >
+              <XCircleIcon className="h-5 w-5" />
+              <span>Clear Deck</span>
+            </button>
             <button
               onClick={() => setIsImportModalOpen(true)}
               className="flex items-center space-x-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-gray-200 transition-colors"

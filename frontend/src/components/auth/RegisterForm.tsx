@@ -25,7 +25,7 @@ const RegisterForm: React.FC = () => {
     try {
       clearError();
       await registerUser(data);
-      navigate('/decks');
+      navigate('/playground');
     } catch (error) {
       // Error is handled by the auth context
     }

@@ -1,5 +1,6 @@
 import logging
 import sys
+from socketio import AsyncServer, ASGIApp
 
 # Configure logging BEFORE any other imports
 logging.basicConfig(
@@ -21,7 +22,8 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db, engine
 from sqlalchemy import text
-from app.api.v1 import auth, decks, cards, cache
+from app.api.v1 import auth, decks, cards, cache, games
+from app.websocket import games as ws_games
 from fastapi.responses import JSONResponse
 
 app = FastAPI(
@@ -30,6 +32,38 @@ app = FastAPI(
     version="0.1.0",
     debug=True,
 )
+
+# Socket.IO server
+from app.socket import set_sio as set_socket_instance
+
+sio = AsyncServer(
+    cors_allowed_origins="*",
+    async_mode="asgi",
+    ping_timeout=60,
+    ping_interval=25,
+    engineio_logger=True,
+)
+sio_app = ASGIApp(sio, socketio_path="/ws/socket.io")
+app.mount("/ws", sio_app)
+
+# Register the socket instance for use in other modules
+set_socket_instance(sio)
+
+# Configure CORS for FastAPI
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:5174", "http://127.0.0.1:5173", "http://127.0.0.1:5174"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,
+)
+sio_app = ASGIApp(sio, socketio_path="/ws/socket.io")
+app.mount("/ws", sio_app)
+
+# Register WebSocket namespaces
+ws_games.register_handlers(sio)
 
 # Configure CORS - MUST be FIRST middleware
 app.add_middleware(
@@ -55,6 +89,7 @@ app.include_router(auth.router, prefix=settings.API_V1_PREFIX)
 app.include_router(decks.router, prefix=settings.API_V1_PREFIX)
 app.include_router(cards.router, prefix=settings.API_V1_PREFIX)
 app.include_router(cache.router, prefix=settings.API_V1_PREFIX)
+app.include_router(games.router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/")

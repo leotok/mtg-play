@@ -537,7 +537,7 @@ const CardList: React.FC<CardListProps> = ({ cards, onUpdateQuantity, onRemoveCa
     <div className="flex">
       {/* Fixed Card Preview Column - Left Side */}
       <div className="w-1/4 flex-shrink-0 pr-4 hidden lg:block">
-        <div className="sticky top-4">
+        <div className="sticky top-20 z-30">
           <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl overflow-hidden relative">
             {displayCard && (displayCard.card_faces?.[displayFaceIndex]?.image_uris?.normal || displayCard.image_uris?.normal) ? (
               <>

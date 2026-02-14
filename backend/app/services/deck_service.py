@@ -614,3 +614,28 @@ def get_deck_service(db: Session = Depends(get_db)) -> DeckService:
     service = DeckService.create_with_repositories(db)
     service.set_validator(db)
     return service
+
+
+async def get_deck_commander_info(db: Session, deck_id: int) -> Optional[dict]:
+    """Get commander info for a deck (used by game rooms)"""
+    deck = db.query(Deck).filter(Deck.id == deck_id).first()
+    if not deck:
+        return None
+    
+    if not deck.commander_scryfall_id:
+        return None
+    
+    scryfall_service = get_scryfall_service()
+    commander_data = await scryfall_service.get_card_by_scryfall_id(deck.commander_scryfall_id)
+    
+    if not commander_data:
+        return None
+    
+    image_uris = commander_data.get('image_uris')
+    if not image_uris and commander_data.get('card_faces'):
+        image_uris = commander_data['card_faces'][0].get('image_uris')
+    
+    return {
+        'name': commander_data.get('name'),
+        'image_uris': image_uris
+    }

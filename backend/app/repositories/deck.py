@@ -158,6 +158,13 @@ class DeckRepository(BaseRepository[Deck]):
             return True
         return False
     
+    def clear_non_commander_cards(self, deck_id: int) -> None:
+        """Remove all non-commander cards from a deck"""
+        self.db.query(DeckCard).filter(
+            and_(DeckCard.deck_id == deck_id, DeckCard.is_commander == False)
+        ).delete()
+        self.db.commit()
+    
     def update_card_in_deck(self, deck_id: int, card_scryfall_id: str, quantity: int, is_commander: bool = False) -> Optional[DeckCard]:
         """Update a card in a deck by Scryfall ID"""
         deck_card = self.db.query(DeckCard).filter(

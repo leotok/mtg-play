@@ -4,7 +4,7 @@ from typing import Optional, List
 
 class DeckCardBase(BaseModel):
     card_scryfall_id: str = Field(..., description="Scryfall ID of the card to add")
-    quantity: int = Field(1, ge=1, le=4, description="Quantity of cards (1-4)")
+    quantity: int = Field(1, ge=1, description="Quantity of cards (1-N)")
     is_commander: bool = Field(False, description="Whether this is the commander")
 
 

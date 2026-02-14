@@ -48,6 +48,20 @@ class ScryfallService:
             return card_data
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
+                # Fall back to fuzzy search if exact match fails
+                try:
+                    await self.rate_limiter.acquire()
+                    fuzzy_response = await self.client.get(
+                        f"{self.base_url}/cards/named",
+                        params={"fuzzy": name}
+                    )
+                    if fuzzy_response.status_code == 200:
+                        card_data = fuzzy_response.json()
+                        if self.cache:
+                            await self.cache.cache_card(card_data['id'], name, card_data)
+                        return card_data
+                except Exception:
+                    pass
                 return None
             print(f"Error fetching card {name}: {e}")
             return None

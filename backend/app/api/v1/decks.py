@@ -103,6 +103,16 @@ async def delete_deck(
     await deck_service.delete_deck(deck_id, deck.owner_id)
 
 
+@router.delete("/decks/{deck_id}/cards", status_code=status.HTTP_204_NO_CONTENT)
+async def clear_deck_cards(
+    deck_id: int,
+    deck: Deck = Depends(get_user_deck_or_404),
+    deck_service: DeckService = Depends(get_deck_service)
+):
+    """Remove all non-commander cards from a deck"""
+    deck_service.deck_repo.clear_non_commander_cards(deck_id)
+
+
 @router.get("/decks/{deck_id}/cards", response_model=List[DeckCardResponse])
 async def get_deck_cards(
     deck_id: int,

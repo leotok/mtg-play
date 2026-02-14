@@ -26,8 +26,8 @@ const LoginForm: React.FC = () => {
       clearError();
       console.log('Calling login function...');
       await login(data.email, data.password);
-      console.log('Login successful, navigating to /decks');
-      navigate('/decks');
+      console.log('Login successful, navigating to /playground');
+      navigate('/playground');
     } catch (error) {
       console.error('Login failed:', error);
       // Error is handled by the auth context

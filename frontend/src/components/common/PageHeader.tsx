@@ -1,6 +1,6 @@
 import React from 'react';
-import { SparklesIcon, ArrowLeftOnRectangleIcon } from '@heroicons/react/24/outline';
-import { useNavigate } from 'react-router-dom';
+import { SparklesIcon, ArrowLeftOnRectangleIcon, Square3Stack3DIcon, PuzzlePieceIcon } from '@heroicons/react/24/outline';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 interface PageHeaderProps {
@@ -10,6 +10,7 @@ interface PageHeaderProps {
 
 const PageHeader: React.FC<PageHeaderProps> = ({ title = 'Deck Manager', subtitle }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { logout, user } = useAuth();
 
   const handleLogout = async () => {
@@ -17,20 +18,49 @@ const PageHeader: React.FC<PageHeaderProps> = ({ title = 'Deck Manager', subtitl
     navigate('/login');
   };
 
+  const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
+
   return (
     <header className="bg-gray-900/80 backdrop-blur-md border-b border-gray-800 sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center space-x-3">
-            <div className="bg-gradient-to-br from-yellow-500 to-amber-600 p-2 rounded-lg shadow-lg shadow-yellow-500/20">
-              <SparklesIcon className="h-6 w-6 text-gray-900" />
+          <div className="flex items-center space-x-6">
+            <div className="flex items-center space-x-3">
+              <div className="bg-gradient-to-br from-yellow-500 to-amber-600 p-2 rounded-lg shadow-lg shadow-yellow-500/20">
+                <SparklesIcon className="h-6 w-6 text-gray-900" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-yellow-400 to-amber-500 bg-clip-text text-transparent">
+                  MTG Commander
+                </h1>
+                <p className="text-xs text-gray-500">{title}</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-yellow-400 to-amber-500 bg-clip-text text-transparent">
-                MTG Commander
-              </h1>
-              <p className="text-xs text-gray-500">{title}</p>
-            </div>
+            
+            <nav className="hidden md:flex items-center space-x-6">
+              <button
+                onClick={() => navigate('/playground')}
+                className={`flex items-center space-x-2 text-sm font-medium transition-all duration-200 ${
+                  isActive('/playground')
+                    ? 'text-yellow-400'
+                    : 'text-gray-400 hover:text-gray-200'
+                }`}
+              >
+                <PuzzlePieceIcon className="h-5 w-5" />
+                <span>Playground</span>
+              </button>
+              <button
+                onClick={() => navigate('/decks')}
+                className={`flex items-center space-x-2 text-sm font-medium transition-all duration-200 ${
+                  isActive('/decks') && location.pathname !== '/decks/new'
+                    ? 'text-yellow-400'
+                    : 'text-gray-400 hover:text-gray-200'
+                }`}
+              >
+                <Square3Stack3DIcon className="h-5 w-5" />
+                <span>My Decks</span>
+              </button>
+            </nav>
           </div>
           
           <div className="flex items-center space-x-6">
