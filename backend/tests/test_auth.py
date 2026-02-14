@@ -181,3 +181,90 @@ class TestSessions:
             response = auth_client.delete("/api/v1/sessions")
             assert response.status_code == 200
             assert "Revoked" in response.json()["message"]
+
+
+class TestRegistration:
+    """Test user registration."""
+
+    def test_register_success(self, client):
+        """Test successful user registration."""
+        with patch('app.api.v1.auth.get_user_service') as mock_get_service:
+            mock_service = MagicMock()
+            mock_user = MagicMock()
+            mock_user.id = 1
+            mock_user.email = "newuser@example.com"
+            mock_user.username = "newuser"
+            mock_service.create_user.return_value = mock_user
+            mock_get_service.return_value = mock_service
+
+            response = client.post("/api/v1/register", json={
+                "email": "newuser@example.com",
+                "username": "newuser",
+                "password": "SecurePass123!",
+                "confirm_password": "SecurePass123!"
+            })
+            assert response.status_code == 201
+
+    def test_register_duplicate_email(self, client):
+        """Test registration with duplicate email fails."""
+        with patch('app.api.v1.auth.get_user_service') as mock_get_service:
+            mock_service = MagicMock()
+            mock_service.create_user.side_effect = ValueError("Email already registered")
+            mock_get_service.return_value = mock_service
+
+            response = client.post("/api/v1/register", json={
+                "email": "existing@example.com",
+                "username": "newuser",
+                "password": "SecurePass123!",
+                "confirm_password": "SecurePass123!"
+            })
+            assert response.status_code == 400
+
+    def test_register_passwords_not_match(self, client):
+        """Test registration with non-matching passwords fails."""
+        response = client.post("/api/v1/register", json={
+            "email": "newuser@example.com",
+            "username": "newuser",
+            "password": "SecurePass123!",
+            "confirm_password": "DifferentPass123!"
+        })
+        assert response.status_code == 422
+
+
+class TestPasswordReset:
+    """Test password reset."""
+
+    def test_forgot_password_existing_user(self, client):
+        """Test forgot password for existing user."""
+        with patch('app.api.v1.auth.get_user_service') as mock_get_service:
+            mock_service = MagicMock()
+            mock_user = MagicMock()
+            mock_service.get_user_by_email.return_value = mock_user
+            mock_get_service.return_value = mock_service
+
+            response = client.post("/api/v1/forgot-password", params={"email": "test@example.com"})
+            assert response.status_code == 200
+            assert "If an account" in response.json()["message"]
+
+    def test_forgot_password_nonexistent_user(self, client):
+        """Test forgot password for non-existent user returns same response."""
+        with patch('app.api.v1.auth.get_user_service') as mock_get_service:
+            mock_service = MagicMock()
+            mock_service.get_user_by_email.return_value = None
+            mock_get_service.return_value = mock_service
+
+            response = client.post("/api/v1/forgot-password", params={"email": "nonexistent@example.com"})
+            assert response.status_code == 200
+            assert "If an account" in response.json()["message"]
+
+    def test_reset_password_invalid_token(self, client):
+        """Test reset password with invalid token fails."""
+        with patch('app.api.v1.auth.verify_password_reset_token') as mock_verify:
+            mock_verify.return_value = None
+
+            response = client.post("/api/v1/reset-password", json={
+                "token": "invalid_token",
+                "new_password": "NewPass123!",
+                "confirm_password": "NewPass123!"
+            })
+            assert response.status_code == 400

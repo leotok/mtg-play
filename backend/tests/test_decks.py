@@ -214,3 +214,89 @@ class TestDeckExport:
         assert "cards" in data
         assert data["name"] == "Test Deck"
         assert data["description"] == "Test export"
+
+
+class TestDeckCardManagement:
+    """Test deck card management endpoints."""
+
+    def test_clear_deck_cards(self, client, test_user):
+        """Test clearing all cards from a deck (except commander)."""
+        deck_data = {
+            "name": "Test Deck",
+            "commander_scryfall_id": COMMANDER_SCRYFALL_ID,
+            "is_public": False,
+        }
+        create_response = client.post("/api/v1/decks", json=deck_data)
+        deck_id = create_response.json()["id"]
+
+        card_data = {
+            "card_scryfall_id": CARD_SCRYFALL_ID,
+            "quantity": 2,
+            "is_commander": False,
+        }
+        client.post(f"/api/v1/decks/{deck_id}/cards", json=card_data)
+
+        response = client.delete(f"/api/v1/decks/{deck_id}/cards")
+        assert response.status_code == 204
+
+        cards_response = client.get(f"/api/v1/decks/{deck_id}/cards")
+        cards = cards_response.json()
+        assert all(card["is_commander"] for card in cards)
+
+    def test_remove_card_from_deck(self, client, test_user):
+        """Test removing a specific card from a deck."""
+        deck_data = {
+            "name": "Test Deck",
+            "commander_scryfall_id": COMMANDER_SCRYFALL_ID,
+            "is_public": False,
+        }
+        create_response = client.post("/api/v1/decks", json=deck_data)
+        deck_id = create_response.json()["id"]
+
+        card_data = {
+            "card_scryfall_id": CARD_SCRYFALL_ID,
+            "quantity": 3,
+            "is_commander": False,
+        }
+        add_response = client.post(f"/api/v1/decks/{deck_id}/cards", json=card_data)
+        card_id = add_response.json()["id"]
+
+        response = client.delete(f"/api/v1/decks/{deck_id}/cards/{card_id}")
+        assert response.status_code == 204
+
+    def test_update_card_quantity_in_deck(self, client, test_user):
+        """Test updating a card's quantity in a deck."""
+        deck_data = {
+            "name": "Test Deck",
+            "commander_scryfall_id": COMMANDER_SCRYFALL_ID,
+            "is_public": False,
+        }
+        create_response = client.post("/api/v1/decks", json=deck_data)
+        deck_id = create_response.json()["id"]
+
+        card_data = {
+            "card_scryfall_id": CARD_SCRYFALL_ID,
+            "quantity": 1,
+            "is_commander": False,
+        }
+        add_response = client.post(f"/api/v1/decks/{deck_id}/cards", json=card_data)
+        card_id = add_response.json()["id"]
+
+        update_data = {"quantity": 4}
+        response = client.put(f"/api/v1/decks/{deck_id}/cards/{card_id}", json=update_data)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["quantity"] == 4
+
+    def test_remove_nonexistent_card_from_deck(self, client, test_user):
+        """Test removing a non-existent card from a deck."""
+        deck_data = {
+            "name": "Test Deck",
+            "commander_scryfall_id": COMMANDER_SCRYFALL_ID,
+            "is_public": False,
+        }
+        create_response = client.post("/api/v1/decks", json=deck_data)
+        deck_id = create_response.json()["id"]
+
+        response = client.delete(f"/api/v1/decks/{deck_id}/cards/99999")
+        assert response.status_code == 204

@@ -2,7 +2,7 @@ import httpx
 import asyncio
 import hashlib
 from typing import Optional, Dict, Any, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from jose import JWTError, jwt
 import bcrypt
 from fastapi import HTTPException, status
@@ -51,9 +51,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         to_encode["sub"] = str(to_encode["sub"])
     
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(UTC) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -67,7 +67,7 @@ def create_refresh_token(data: dict) -> str:
     if "sub" in to_encode and isinstance(to_encode["sub"], int):
         to_encode["sub"] = str(to_encode["sub"])
     
-    expire = datetime.utcnow() + timedelta(days=7)
+    expire = datetime.now(UTC) + timedelta(days=7)
     to_encode.update({"exp": expire, "type": "refresh"})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -99,7 +99,7 @@ def verify_token(token: str, token_type: str = "access") -> Optional[dict]:
 def create_password_reset_token(email: str) -> str:
     """Create password reset token (1 hour expiration)"""
     to_encode = {"email": email, "type": "password_reset"}
-    expire = datetime.utcnow() + timedelta(hours=1)
+    expire = datetime.now(UTC) + timedelta(hours=1)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
