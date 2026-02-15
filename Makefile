@@ -1,6 +1,6 @@
 # MTG Commander Online - Development Commands
 
-.PHONY: help backend-start backend-stop backend-dev backend-test frontend-start frontend-dev install-backend install-backend-deps install-frontend clean lint format check-deps
+.PHONY: help backend-start backend-stop backend-dev backend-test frontend-start frontend-dev frontend-test install-backend install-backend-deps install-frontend clean lint format check-deps
 
 # Default target
 help:
@@ -17,8 +17,9 @@ help:
 	@echo ""
 	@echo "Frontend Commands:"
 	@echo "  frontend-start    Start frontend server"
-	@echo "  frontend-dev      Start frontend development server"
-	@echo "  frontend-build    Build frontend for production"
+	@echo "  frontend-dev     Start frontend development server"
+	@echo "  frontend-build   Build frontend for production"
+	@echo "  frontend-test    Run frontend tests"
 	@echo ""
 	@echo "Setup Commands:"
 	@echo "  install-backend   Install backend dependencies"
@@ -68,6 +69,8 @@ migrate-create:
 # FRONTEND COMMANDS  
 # =============================================================================
 
+SHELL := /bin/bash
+
 frontend-start:
 	@echo "🚀 Starting frontend server..."
 	cd frontend && npm start
@@ -79,6 +82,10 @@ frontend-dev:
 frontend-build:
 	@echo "🏗️ Building frontend for production..."
 	cd frontend && npm run build
+
+frontend-test:
+	@echo "🧪 Running frontend tests..."
+	cd frontend && npm run test:run
 
 # =============================================================================
 # SETUP COMMANDS

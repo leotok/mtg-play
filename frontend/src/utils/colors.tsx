@@ -21,23 +21,23 @@ export const COLOR_GROUPS: Record<string, string> = {
   'B': 'Mono Black',
   'R': 'Mono Red',
   'G': 'Mono Green',
-  'WU': 'Azorius',
-  'UB': 'Dimir',
+  'BG': 'Golgari',
   'BR': 'Rakdos',
-  'RG': 'Gruul',
   'GW': 'Selesnya',
-  'WB': 'Orzhov',
+  'RG': 'Gruul',
+  'RW': 'Boros',
+  'UB': 'Dimir',
   'UG': 'Simic',
   'UR': 'Izzet',
-  'BG': 'Golgari',
-  'RW': 'Boros',
+  'WB': 'Orzhov',
+  'WU': 'Azorius',
   'WBG': 'Abzan',
   'WUB': 'Esper',
   'WUR': 'Jeskai',
-  'BRU': 'Grixis',
-  'BRW': 'Mardu',
-  'RWG': 'Naya',
-  'GWU': 'Bant',
+  'UBR': 'Grixis',
+  'WBR': 'Mardu',
+  'WRG': 'Naya',
+  'WUG': 'Bant',
   'WUBRG': 'Five Color',
 };
 
@@ -54,7 +54,7 @@ const SHARD_GROUPS: Record<string, string> = {
 const COLOR_ORDER = ['W', 'U', 'B', 'R', 'G'];
 
 const sortColors = (colors: string[]): string[] => {
-  return colors.sort();
+  return colors.sort((a, b) => COLOR_ORDER.indexOf(a) - COLOR_ORDER.indexOf(b));
 };
 
 const findShardGroup = (sortedColors: string): string | undefined => {
