@@ -159,6 +159,30 @@ class SocketService {
     }
   }
 
+  onGameStateUpdated(callback: (data: { game_id: number }) => void) {
+    if (this.socket) {
+      this.socket.on('game_state_updated', callback);
+    }
+  }
+
+  onCardPlayed(callback: (data: { game_id: number; user_id: number; card_id: number }) => void) {
+    if (this.socket) {
+      this.socket.on('card_played', callback);
+    }
+  }
+
+  onCardMoved(callback: (data: { game_id: number; user_id: number; card_id: number; from_zone: string; to_zone: string }) => void) {
+    if (this.socket) {
+      this.socket.on('card_moved', callback);
+    }
+  }
+
+  onCardTapped(callback: (data: { game_id: number; card_id: number; is_tapped: boolean }) => void) {
+    if (this.socket) {
+      this.socket.on('card_tapped', callback);
+    }
+  }
+
   removeAllListeners() {
     if (this.socket) {
       this.socket.removeAllListeners();

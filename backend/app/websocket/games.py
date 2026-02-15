@@ -111,4 +111,60 @@ def register_handlers(sio: AsyncServer):
                 "game_id": game_id
             }, room=f"game_{game_id}")
     
+    @sio.on("game_state_updated")
+    async def game_state_updated(sid, data):
+        """Game state has been updated"""
+        game_id = data.get("game_id")
+        
+        if game_id:
+            await sio.emit("game_state_updated", {
+                "game_id": game_id
+            }, room=f"game_{game_id}")
+    
+    @sio.on("card_played")
+    async def card_played(sid, data):
+        """A card was played"""
+        game_id = data.get("game_id")
+        user_id = data.get("user_id")
+        card_id = data.get("card_id")
+        
+        if game_id:
+            await sio.emit("card_played", {
+                "game_id": game_id,
+                "user_id": user_id,
+                "card_id": card_id
+            }, room=f"game_{game_id}")
+    
+    @sio.on("card_moved")
+    async def card_moved(sid, data):
+        """A card was moved between zones"""
+        game_id = data.get("game_id")
+        user_id = data.get("user_id")
+        card_id = data.get("card_id")
+        from_zone = data.get("from_zone")
+        to_zone = data.get("to_zone")
+        
+        if game_id:
+            await sio.emit("card_moved", {
+                "game_id": game_id,
+                "user_id": user_id,
+                "card_id": card_id,
+                "from_zone": from_zone,
+                "to_zone": to_zone
+            }, room=f"game_{game_id}")
+    
+    @sio.on("card_tapped")
+    async def card_tapped(sid, data):
+        """A card was tapped/untapped"""
+        game_id = data.get("game_id")
+        card_id = data.get("card_id")
+        is_tapped = data.get("is_tapped")
+        
+        if game_id:
+            await sio.emit("card_tapped", {
+                "game_id": game_id,
+                "card_id": card_id,
+                "is_tapped": is_tapped
+            }, room=f"game_{game_id}")
+    
     logger.info("WebSocket handlers registered")

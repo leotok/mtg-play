@@ -18,6 +18,8 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 from app.core.database import Base
 from app.models import User, Deck, DeckCard  # Import all models
+from app.models.game import GameRoom, GameRoomPlayer
+from app.models.game_state import GameState, PlayerGameState, GameCard
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

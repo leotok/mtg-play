@@ -3,12 +3,21 @@ from typing import List
 
 from app.core.auth import get_current_user
 from app.models.user import User
+from app.models.game import CardZone
 from app.schemas.game import (
     GameRoomCreate,
     GameRoomResponse,
     GameRoomListItem,
     JoinResponse,
     DeckSelectionRequest,
+)
+from app.schemas.game_state import (
+    GameStateResponse,
+    DrawCardRequest,
+    PlayCardRequest,
+    MoveCardRequest,
+    TapCardRequest,
+    BattlefieldPositionRequest,
 )
 from app.services.game_service import get_game_service, GameService
 from app.socket import get_sio
@@ -232,3 +241,94 @@ async def select_deck(
         logger.error(f'Failed to emit WebSocket event: {e}')
     
     return game
+
+
+@router.get("/{game_id}/state", response_model=GameStateResponse)
+async def get_game_state(
+    game_id: int,
+    current_user: User = Depends(get_current_user),
+    game_service: GameService = Depends(get_game_service)
+):
+    """Get current game state"""
+    return await game_service.get_game_state(game_id, current_user)
+
+
+@router.post("/{game_id}/draw", response_model=GameStateResponse)
+async def draw_card(
+    game_id: int,
+    current_user: User = Depends(get_current_user),
+    game_service: GameService = Depends(get_game_service)
+):
+    """Draw a card from library"""
+    return await game_service.draw_card(game_id, current_user)
+
+
+@router.post("/{game_id}/play-card", response_model=GameStateResponse)
+async def play_card(
+    game_id: int,
+    request: PlayCardRequest,
+    current_user: User = Depends(get_current_user),
+    game_service: GameService = Depends(get_game_service)
+):
+    """Play a card from hand to battlefield"""
+    return await game_service.play_card(
+        game_id, 
+        request.card_id, 
+        current_user, 
+        request.target_zone
+    )
+
+
+@router.post("/{game_id}/move-card", response_model=GameStateResponse)
+async def move_card(
+    game_id: int,
+    request: MoveCardRequest,
+    current_user: User = Depends(get_current_user),
+    game_service: GameService = Depends(get_game_service)
+):
+    """Move card between zones"""
+    return await game_service.move_card(
+        game_id,
+        request.card_id,
+        request.target_zone,
+        request.position,
+        current_user
+    )
+
+
+@router.post("/{game_id}/tap/{card_id}", response_model=GameStateResponse)
+async def tap_card(
+    game_id: int,
+    card_id: int,
+    current_user: User = Depends(get_current_user),
+    game_service: GameService = Depends(get_game_service)
+):
+    """Tap or untap a card"""
+    return await game_service.tap_card(game_id, card_id, current_user)
+
+
+@router.post("/{game_id}/battlefield-position", response_model=GameStateResponse)
+async def update_battlefield_position(
+    game_id: int,
+    request: BattlefieldPositionRequest,
+    current_user: User = Depends(get_current_user),
+    game_service: GameService = Depends(get_game_service)
+):
+    """Update card position on battlefield"""
+    return await game_service.update_battlefield_position(
+        game_id,
+        request.card_id,
+        request.x,
+        request.y,
+        current_user
+    )
+
+
+@router.post("/{game_id}/untap-all", response_model=GameStateResponse)
+async def untap_all(
+    game_id: int,
+    current_user: User = Depends(get_current_user),
+    game_service: GameService = Depends(get_game_service)
+):
+    """Untap all of the current player's cards"""
+    return await game_service.untap_all(game_id, current_user)

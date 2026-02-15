@@ -7,6 +7,7 @@ import DeckDashboard from './pages/DeckDashboard';
 import DeckEditor from './pages/DeckEditor';
 import Playground from './pages/Playground';
 import GameRoomPage from './pages/GameRoomPage';
+import GamePage from './pages/GamePage';
 import JoinGamePage from './pages/JoinGamePage';
 
 function App() {
@@ -52,6 +53,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <GameRoomPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/playground/game/:gameId/play"
+              element={
+                <ProtectedRoute>
+                  <GamePage />
                 </ProtectedRoute>
               }
             />

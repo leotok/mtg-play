@@ -547,6 +547,16 @@ const GameRoomPage: React.FC = () => {
               Stop Game
             </button>
           )}
+
+          {isAccepted && game.status === 'in_progress' && (
+            <button
+              onClick={() => navigate(`/playground/game/${gameId}/play`)}
+              className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold py-2 px-6 rounded-xl hover:from-green-400 hover:to-emerald-400 transition-all duration-200"
+            >
+              <PlayIcon className="h-5 w-5" />
+              Enter Game
+            </button>
+          )}
         </div>
       </main>
     </div>

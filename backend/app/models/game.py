@@ -25,6 +25,30 @@ class PlayerStatus(str, enum.Enum):
     REJECTED = "rejected"
 
 
+class TurnPhase(str, enum.Enum):
+    UNTAP = "untap"
+    UPKEEP = "upkeep"
+    DRAW = "draw"
+    MAIN1 = "main1"
+    COMBAT_START = "combat_start"
+    COMBAT_ATTACK = "combat_attack"
+    COMBAT_BLOCK = "combat_block"
+    COMBAT_DAMAGE = "combat_damage"
+    COMBAT_END = "combat_end"
+    MAIN2 = "main2"
+    END = "end"
+    CLEANUP = "cleanup"
+
+
+class CardZone(str, enum.Enum):
+    LIBRARY = "library"
+    HAND = "hand"
+    BATTLEFIELD = "battlefield"
+    GRAVEYARD = "graveyard"
+    EXILE = "exile"
+    COMMANDER = "commander"
+
+
 class GameRoom(Base):
     __tablename__ = "game_rooms"
 
@@ -42,6 +66,7 @@ class GameRoom(Base):
 
     host: Mapped["User"] = relationship("User", foreign_keys=[host_id])
     players: Mapped[list["GameRoomPlayer"]] = relationship("GameRoomPlayer", back_populates="game_room", cascade="all, delete-orphan")
+    game_state: Mapped["GameState"] = relationship("GameState", back_populates="game_room", uselist=False)
 
 
 class GameRoomPlayer(Base):

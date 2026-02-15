@@ -190,6 +190,7 @@ def mock_scryfall():
     mock = create_mock_scryfall_service()
     with patch("app.services.deck_service.get_scryfall_service", return_value=mock), \
          patch("app.services.scryfall.get_scryfall_service", return_value=mock), \
+         patch("app.services.game_service.get_scryfall_service", return_value=mock), \
          patch("app.api.v1.decks.get_scryfall_service", return_value=mock), \
          patch("app.api.v1.cards.get_scryfall_service", return_value=mock):
         yield mock
