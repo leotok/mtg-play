@@ -275,7 +275,10 @@ async def play_card(
         game_id, 
         request.card_id, 
         current_user, 
-        request.target_zone
+        request.target_zone,
+        request.position,
+        request.battlefield_x,
+        request.battlefield_y
     )
 
 

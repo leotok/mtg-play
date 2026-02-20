@@ -7,7 +7,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useGameStateStore } from '../store/gameStateStore';
 import { socketService } from '../services/socket';
-import { TURN_PHASE_LABELS, type GameCard, type PlayerGameState } from '../types/gameState';
+import { TURN_PHASE_LABELS, type GameCard, type GameCardInBattlefield, type PlayerGameState } from '../types/gameState';
 
 const CardPreview: React.FC<{
   card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string };
@@ -42,13 +42,13 @@ const CardPreview: React.FC<{
 const Card: React.FC<{
   card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string; is_tapped?: boolean; battlefield_x?: number; battlefield_y?: number; is_attacking?: boolean; is_blocking?: boolean; is_face_up?: boolean };
   onTap?: () => void;
-  onDragEnd?: (x: number, y: number) => void;
+  onMouseDown?: (e: React.MouseEvent) => void;
   onHover?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null, position: { x: number; y: number }) => void;
   size?: 'xs' | 'sm' | 'md' | 'lg';
   hidden?: boolean;
-}> = ({ card, onTap, onDragEnd, onHover, size = 'md', hidden = false }) => {
-  const [isDragging, setIsDragging] = useState(false);
-
+  isDragging?: boolean;
+  style?: React.CSSProperties;
+}> = ({ card, onTap, onMouseDown, onHover, size = 'md', hidden = false, isDragging = false, style }) => {
   const sizeClasses = {
     xs: 'w-10 h-14',
     sm: 'w-16 h-24',
@@ -59,32 +59,28 @@ const Card: React.FC<{
   const imageUrl = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal;
   const cardName = hidden ? 'Unknown Card' : card.card_name;
 
-  const handleDragStart = (e: React.DragEvent) => {
-    if (!onDragEnd) return;
-    setIsDragging(true);
-    e.dataTransfer.setData('cardId', card.id.toString());
-  };
-
-  const handleDragEnd = (e: React.DragEvent) => {
-    setIsDragging(false);
-    if (!onDragEnd || !e.currentTarget.parentElement) return;
-    
-    const rect = e.currentTarget.parentElement.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    onDragEnd(x, y);
-  };
-
   const handleMouseEnter = (e: React.MouseEvent) => {
     if (!hidden && onHover) {
       onHover(card, { x: e.clientX, y: e.clientY });
     }
   };
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (onMouseDown) {
+      onMouseDown(e);
+    }
+  };
+
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!hidden && onHover) {
       onHover(card, { x: e.clientX, y: e.clientY });
+    }
+  };
+
+  const handleDoubleClick = () => {
+    if (onTap) {
+      onTap();
     }
   };
 
@@ -96,22 +92,21 @@ const Card: React.FC<{
 
   return (
     <div
-      draggable={!!onDragEnd}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      onClick={onTap}
+      onMouseDown={handleMouseDown}
+      onDoubleClick={handleDoubleClick}
       onMouseEnter={handleMouseEnter}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       className={`
         ${sizeClasses[size]} 
         rounded-lg border-2 border-gray-600 bg-gray-800 
-        flex items-center justify-center cursor-pointer
+        flex items-center justify-center cursor-grab select-none
         transition-all duration-200
         ${card.is_tapped ? 'rotate-90' : ''}
-        ${isDragging ? 'opacity-50 scale-105' : 'hover:scale-105 hover:border-yellow-500'}
+        ${isDragging ? 'opacity-80 scale-105 cursor-grabbing z-50' : 'hover:scale-105 hover:border-yellow-500'}
         ${hidden ? 'bg-gray-900 border-dashed' : ''}
       `}
+      style={style}
       title={hidden ? cardName : `${cardName}\n${card.mana_cost || ''}\n${card.type_line || ''}`}
     >
       {hidden ? (
@@ -120,10 +115,10 @@ const Card: React.FC<{
         <img 
           src={imageUrl} 
           alt={cardName}
-          className="w-full h-full object-cover rounded-md"
+          className="w-full h-full object-cover rounded-md pointer-events-none"
         />
       ) : (
-        <div className="text-white text-xs text-center p-1">
+        <div className="text-white text-xs text-center p-1 pointer-events-none">
           <div className="font-bold">{cardName}</div>
           {card.mana_cost && <div>{card.mana_cost}</div>}
         </div>
@@ -136,11 +131,19 @@ const PlayerZone: React.FC<{
   player: PlayerGameState;
   isCurrentUser: boolean;
   isActive: boolean;
-  onPlayCard?: (cardId: number) => void;
   onTapCard?: (cardId: number) => void;
-  onUpdatePosition?: (cardId: number, x: number, y: number) => void;
   onHoverCard?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null, position: { x: number; y: number }) => void;
-}> = ({ player, isCurrentUser, isActive, onPlayCard, onTapCard, onUpdatePosition, onHoverCard }) => {
+  onMouseDownCard?: (card: GameCardInBattlefield, e: React.MouseEvent) => void;
+  onMouseDownHand?: (card: GameCard, e: React.MouseEvent) => void;
+  battlefieldRef?: React.RefObject<HTMLDivElement | null>;
+  dragState?: {
+    isDragging: boolean;
+    cardId: number;
+    source: 'battlefield' | 'hand';
+    cardX: number;
+    cardY: number;
+  } | null;
+}> = ({ player, isCurrentUser, isActive, onTapCard, onHoverCard, onMouseDownCard, onMouseDownHand, battlefieldRef, dragState }) => {
   return (
     <div className={`p-2 rounded-lg flex-1 flex flex-col ${isActive ? 'bg-yellow-900/30 border-2 border-yellow-500' : 'bg-gray-800/50 border border-gray-700'}`}>
       <div className="flex gap-2 flex-1 min-h-0">
@@ -149,37 +152,33 @@ const PlayerZone: React.FC<{
             <div className="h-full min-h-0 pb-2">
               <h4 className="text-xs text-gray-500 uppercase mb-1">Battlefield ({player.battlefield.length})</h4>
               <div 
-                className="h-[calc(100%-1.5rem)] p-1 bg-green-900/20 border-2 border-dashed border-green-800 rounded-lg relative"
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const cardId = e.dataTransfer.getData('cardId');
-                  if (cardId && onUpdatePosition) {
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const y = e.clientY - rect.top;
-                    onUpdatePosition(parseInt(cardId), x, y);
-                  }
-                }}
+                ref={battlefieldRef}
+                className="h-[calc(100%-1.5rem)] p-1 bg-green-900/20 border-2 border-dashed border-green-800 rounded-lg relative select-none"
               >
-                {player.battlefield.map((card) => (
-                  <div
-                    key={card.id}
-                    className="absolute"
-                    style={{ 
-                      left: card.battlefield_x || 5, 
-                      top: card.battlefield_y || 5 
-                    }}
-                  >
-                    <Card 
-                      card={card} 
-                      size="sm"
-                      onTap={() => onTapCard?.(card.id)}
-                      onDragEnd={(x, y) => onUpdatePosition?.(card.id, x, y)}
-                      onHover={onHoverCard}
-                    />
-                  </div>
-                ))}
+                {player.battlefield.map((card) => {
+                  const isDraggingThis = dragState?.isDragging && dragState?.cardId === card.id;
+                  return (
+                    <div
+                      key={card.id}
+                      className="absolute"
+                      style={{ 
+                        left: isDraggingThis ? dragState.cardX : (card.battlefield_x || 5), 
+                        top: isDraggingThis ? dragState.cardY : (card.battlefield_y || 5),
+                        transition: isDraggingThis ? 'none' : 'all 0.1s ease',
+                        zIndex: isDraggingThis ? 50 : 1,
+                      }}
+                    >
+                      <Card 
+                        card={card} 
+                        size="sm"
+                        onTap={() => onTapCard?.(card.id)}
+                        onMouseDown={isCurrentUser ? (e) => onMouseDownCard?.(card, e) : undefined}
+                        onHover={onHoverCard}
+                        isDragging={isDraggingThis}
+                      />
+                    </div>
+                  );
+                })}
                 {player.battlefield.length === 0 && (
                   <div className="absolute inset-0 flex items-center justify-center text-gray-600 text-xs">
                     Drop cards here
@@ -192,19 +191,38 @@ const PlayerZone: React.FC<{
           <div className="flex-shrink-0">
             <h4 className="text-xs text-gray-500 uppercase mb-1 text-center">Hand ({player.hand.length})</h4>
             <div className="flex flex-wrap justify-center gap-1 min-h-[40px] p-1 bg-gray-900/50 rounded">
-              {player.hand.map((card) => (
-                <Card 
-                  key={card.id} 
-                  card={card} 
-                  size="xs"
-                  hidden={!isCurrentUser}
-                  onTap={isCurrentUser ? () => onPlayCard?.(card.id) : undefined}
-                  onHover={onHoverCard}
-                />
-              ))}
+              {player.hand.map((card) => {
+                const isDraggingThis = dragState?.isDragging && dragState?.cardId === card.id;
+                if (isDraggingThis) return null;
+                return (
+                  <Card 
+                    key={card.id} 
+                    card={card} 
+                    size="xs"
+                    hidden={!isCurrentUser}
+                    onMouseDown={isCurrentUser ? (e) => onMouseDownHand?.(card, e) : undefined}
+                    onHover={onHoverCard}
+                  />
+                );
+              })}
             </div>
-          </div>
-        </div>
+              </div>
+              {dragState?.isDragging && dragState?.source === 'hand' && (() => {
+                const draggedCard = player.hand.find(c => c.id === dragState.cardId);
+                if (!draggedCard) return null;
+                return (
+                  <div
+                    className="absolute pointer-events-none z-50"
+                    style={{
+                      left: dragState.cardX - 20,
+                      top: dragState.cardY - 28,
+                    }}
+                  >
+                    <Card card={draggedCard} size="sm" isDragging />
+                  </div>
+                );
+              })()}
+            </div>
 
           <div className="w-20 flex-shrink-0">
             <h4 className="text-xs text-gray-500 uppercase mb-1">Cmd</h4>
@@ -263,6 +281,18 @@ const GamePage: React.FC = () => {
     position: { x: number; y: number };
   } | null>(null);
 
+  const [dragState, setDragState] = useState<{
+    isDragging: boolean;
+    cardId: number;
+    source: 'battlefield' | 'hand';
+    cardX: number;
+    cardY: number;
+    clickOffsetX: number;
+    clickOffsetY: number;
+  } | null>(null);
+
+  const battlefieldRef = React.useRef<HTMLDivElement>(null);
+
   const currentPlayer = gameState?.players.find(p => p.user_id === user?.id);
 
   useEffect(() => {
@@ -293,20 +323,106 @@ const GamePage: React.FC = () => {
     await untapAll(parseInt(gameId));
   };
 
-  const handlePlayCard = async (cardId: number) => {
-    if (!gameId) return;
-    await playCard(parseInt(gameId), cardId);
-  };
-
   const handleTapCard = async (cardId: number) => {
     if (!gameId) return;
     await tapCard(parseInt(gameId), cardId);
   };
 
-  const handleUpdatePosition = async (cardId: number, x: number, y: number) => {
-    if (!gameId) return;
-    await updateBattlefieldPosition(parseInt(gameId), cardId, x, y);
+  const handleMouseDownBattlefield = (card: GameCardInBattlefield, e: React.MouseEvent) => {
+    if (!battlefieldRef.current) return;
+    
+    const rect = battlefieldRef.current.getBoundingClientRect();
+    const cardX = card.battlefield_x || 0;
+    const cardY = card.battlefield_y || 0;
+    
+    const clickOffsetX = e.clientX - rect.left - cardX;
+    const clickOffsetY = e.clientY - rect.top - cardY;
+    
+    setDragState({
+      isDragging: true,
+      cardId: card.id,
+      source: 'battlefield',
+      cardX,
+      cardY,
+      clickOffsetX,
+      clickOffsetY,
+    });
   };
+
+  const handleMouseDownHand = (card: GameCard, e: React.MouseEvent) => {
+    setDragState({
+      isDragging: true,
+      cardId: card.id,
+      source: 'hand',
+      cardX: e.clientX,
+      cardY: e.clientY,
+      clickOffsetX: 0,
+      clickOffsetY: 0,
+    });
+  };
+
+  useEffect(() => {
+    if (!dragState) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!battlefieldRef.current) return;
+      
+      const rect = battlefieldRef.current.getBoundingClientRect();
+      
+      if (dragState.source === 'hand') {
+        setDragState(prev => prev ? { ...prev, cardX: e.clientX, cardY: e.clientY } : null);
+      } else {
+        const x = e.clientX - rect.left - dragState.clickOffsetX;
+        const y = e.clientY - rect.top - dragState.clickOffsetY;
+        setDragState(prev => prev ? { ...prev, cardX: x, cardY: y } : null);
+      }
+    };
+
+    const handleMouseUp = async () => {
+      if (!dragState || !battlefieldRef.current || !gameId) {
+        setDragState(null);
+        return;
+      }
+
+      const rect = battlefieldRef.current.getBoundingClientRect();
+      const x = dragState.cardX;
+      const y = dragState.cardY;
+
+      const isInside = 
+        x >= rect.left && 
+        x <= rect.right && 
+        y >= rect.top && 
+        y <= rect.bottom;
+
+      if (dragState.source === 'hand' && isInside) {
+        const localX = dragState.cardX - rect.left - 32;
+        const localY = dragState.cardY - rect.top - 48;
+        await playCard(parseInt(gameId), dragState.cardId, localX, localY);
+      } else if (dragState.source === 'battlefield') {
+        const localX = dragState.cardX;
+        const localY = dragState.cardY;
+        const isValidPosition = 
+          localX >= 0 && 
+          localX <= rect.width - 64 && 
+          localY >= 0 && 
+          localY <= rect.height - 96;
+
+        if (isValidPosition) {
+          await updateBattlefieldPosition(parseInt(gameId), dragState.cardId, localX, localY);
+        }
+      }
+
+      setDragState(null);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [dragState, gameId]);
 
   if (isLoading && !gameState) {
     return (
@@ -341,7 +457,7 @@ const GamePage: React.FC = () => {
   const isCurrentUserActive = currentPlayer?.is_active || false;
 
   return (
-    <div className="w-screen h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 overflow-hidden">
+    <div className="w-screen h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 overflow-hidden select-none">
       <div className="absolute top-2 left-2 z-10">
         <button
           onClick={() => navigate(`/playground/game/${gameId}`)}
@@ -351,7 +467,7 @@ const GamePage: React.FC = () => {
           Back
         </button>
       </div>
-      {hoveredCard && (() => {
+      {hoveredCard && !dragState?.isDragging && (() => {
         const currentUser = gameState.players.find(p => p.user_id === user?.id);
         const isCommander = gameState.players.some(p => p.commander.some(c => c.id === hoveredCard.card.id));
         const isOpponent = currentUser && !(
@@ -378,10 +494,12 @@ const GamePage: React.FC = () => {
                 player={player}
                 isCurrentUser={player.user_id === user?.id}
                 isActive={player.is_active}
-                onPlayCard={player.user_id === user?.id ? handlePlayCard : undefined}
                 onTapCard={player.user_id === user?.id ? handleTapCard : undefined}
-                onUpdatePosition={player.user_id === user?.id ? handleUpdatePosition : undefined}
                 onHoverCard={(card, position) => setHoveredCard(card ? { card, position } : null)}
+                onMouseDownCard={player.user_id === user?.id ? handleMouseDownBattlefield : undefined}
+                onMouseDownHand={player.user_id === user?.id ? handleMouseDownHand : undefined}
+                battlefieldRef={battlefieldRef}
+                dragState={player.user_id === user?.id ? dragState : null}
               />
             ))}
         </div>

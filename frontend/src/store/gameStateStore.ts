@@ -11,7 +11,7 @@ interface GameStateStore {
   fetchGameState: (gameId: number) => Promise<void>;
   drawCard: (gameId: number) => Promise<void>;
   untapAll: (gameId: number) => Promise<void>;
-  playCard: (gameId: number, cardId: number) => Promise<void>;
+  playCard: (gameId: number, cardId: number, battlefieldX?: number, battlefieldY?: number) => Promise<void>;
   tapCard: (gameId: number, cardId: number) => Promise<void>;
   updateBattlefieldPosition: (gameId: number, cardId: number, x: number, y: number) => Promise<void>;
   moveCard: (gameId: number, cardId: number, targetZone: string, position: number) => Promise<void>;
@@ -68,13 +68,15 @@ export const useGameStateStore = create<GameStateStore>((set) => ({
     }
   },
 
-  playCard: async (gameId: number, cardId: number) => {
+  playCard: async (gameId: number, cardId: number, battlefieldX?: number, battlefieldY?: number) => {
     set({ isLoading: true, error: null });
     try {
       const response = await apiClient.post<GameState>(`/games/${gameId}/play-card`, {
         card_id: cardId,
         target_zone: 'battlefield',
         position: 0,
+        battlefield_x: battlefieldX ?? null,
+        battlefield_y: battlefieldY ?? null,
       });
       set({ gameState: response, isLoading: false });
     } catch (err: any) {

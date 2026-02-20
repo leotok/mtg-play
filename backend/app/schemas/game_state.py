@@ -92,6 +92,8 @@ class PlayCardRequest(BaseModel):
     card_id: int
     target_zone: CardZone = CardZone.BATTLEFIELD
     position: int = 0
+    battlefield_x: Optional[float] = None
+    battlefield_y: Optional[float] = None
 
 
 class MoveCardRequest(BaseModel):

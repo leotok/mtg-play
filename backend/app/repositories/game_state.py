@@ -87,7 +87,9 @@ class GameCardRepository(BaseRepository[GameCard]):
         card_id: int, 
         new_zone: CardZone, 
         new_position: int,
-        player_state_id: Optional[int] = None
+        player_state_id: Optional[int] = None,
+        battlefield_x: Optional[float] = None,
+        battlefield_y: Optional[float] = None,
     ) -> Optional[GameCard]:
         """Move a card to a new zone"""
         card = self.get_card_by_id(card_id)
@@ -96,6 +98,11 @@ class GameCardRepository(BaseRepository[GameCard]):
         
         card.zone = new_zone.value
         card.position = new_position
+        
+        if battlefield_x is not None:
+            card.battlefield_x = battlefield_x
+        if battlefield_y is not None:
+            card.battlefield_y = battlefield_y
         
         if player_state_id:
             card.player_game_state_id = player_state_id

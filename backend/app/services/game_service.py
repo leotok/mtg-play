@@ -616,7 +616,10 @@ class GameService:
         game_id: int, 
         card_id: int, 
         current_user: User,
-        target_zone: CardZone = CardZone.BATTLEFIELD
+        target_zone: CardZone = CardZone.BATTLEFIELD,
+        position: int = 0,
+        battlefield_x: Optional[float] = None,
+        battlefield_y: Optional[float] = None,
     ) -> GameStateResponse:
         game = self._get_game_or_404(game_id)
         
@@ -664,7 +667,13 @@ class GameService:
         hand_cards = self.game_card_repo.get_player_cards_in_zone(player_state.id, CardZone.HAND)
         new_position = len(self.game_card_repo.get_player_cards_in_zone(player_state.id, target_zone))
         
-        self.game_card_repo.move_card(card_id, target_zone, new_position)
+        self.game_card_repo.move_card(
+            card_id, 
+            target_zone, 
+            new_position,
+            battlefield_x=battlefield_x,
+            battlefield_y=battlefield_y
+        )
         
         return await self.get_game_state(game_id, current_user)
     
