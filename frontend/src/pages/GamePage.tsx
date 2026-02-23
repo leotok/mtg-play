@@ -49,7 +49,9 @@ const Card: React.FC<{
   isDragging?: boolean;
   style?: React.CSSProperties;
   scale?: number;
-}> = ({ card, onTap, onMouseDown, onHover, size = 'md', hidden = false, isDragging = false, style, scale = 100 }) => {
+  handIndex?: number;
+  zIndex?: number;
+}> = ({ card, onTap, onMouseDown, onHover, size = 'md', hidden = false, isDragging = false, style, scale = 100, handIndex = 0, zIndex = 0 }) => {
   const sizeClasses = {
     xs: 'h-24',
     sm: 'h-36',
@@ -91,7 +93,10 @@ const Card: React.FC<{
     }
   };
 
-  const rotation = card.is_tapped ? 90 : 0;
+  const left = handIndex * -40;
+  const top = Math.abs(handIndex * 8 );
+
+  const rotation = card.is_tapped ? 90 : (handIndex * 4);
   const scaleTransform = scale !== 100 ? `scale(${scale / 100})` : '';
   const rotationTransform = rotation !== 0 ? `rotate(${rotation}deg)` : '';
   const combinedTransform = [scaleTransform, rotationTransform].filter(Boolean).join(' ');
@@ -112,7 +117,7 @@ const Card: React.FC<{
         ${isDragging ? 'opacity-80 scale-105 cursor-grabbing z-50' : 'hover:scale-105 hover:border-yellow-500'}
         ${hidden ? 'bg-gray-900 border-dashed' : ''}
       `}
-      style={scaleStyle}
+      style={{...scaleStyle, zIndex, position: 'relative', left, top}}
       title={hidden ? cardName : `${cardName}\n${card.mana_cost || ''}\n${card.type_line || ''}`}
     >
       {hidden ? (
@@ -164,6 +169,11 @@ const PlayerZone: React.FC<{
 }> = ({ player, isCurrentUser, isActive, onTapCard, onHoverCard, onMouseDownCard, onMouseDownHand, onMouseDownCommander, onMouseDownGraveyard, onMouseDownExile, battlefieldRef, handRef, commanderRef, graveyardRef, exileRef, dragState, cardScale = 100 }) => {
   const backgroundColor = isCurrentUser ? 'darkslateblue' : 'darkslategray';
 
+
+  const handIndexArray = player.hand.map((_, idx) => {
+    return (idx - (player.hand.length/2));
+  });
+
   return (
     <div className={`p-2 rounded-lg flex-1 flex flex-col relative ${isActive ? 'bg-yellow-900/30 border-2 border-yellow-500' : 'bg-gray-800/50 border border-gray-700'}`} style={{backgroundColor}}>
       <div className="flex gap-2 flex-1 min-h-0">
@@ -212,7 +222,7 @@ const PlayerZone: React.FC<{
           {isCurrentUser && (
             <div className="fixed bottom-0 left-0 right-40 z-20 pointer-events-none" style={{transform: 'translateY(40%)'}}>
               <div ref={handRef as any} className="flex justify-center gap-1 p-2 pointer-events-auto">
-                {player.hand.map((card) => {
+                {player.hand.map((card, idx) => {
                   const isDraggingThis = dragState?.isDragging && dragState?.cardId === card.id;
                   if (isDraggingThis) return null;
                   return (
@@ -223,6 +233,8 @@ const PlayerZone: React.FC<{
                       scale={cardScale}
                       onMouseDown={(e) => onMouseDownHand?.(card, e)}
                       onHover={onHoverCard}
+                      handIndex={handIndexArray[idx]}
+                      zIndex={idx}
                     />
                   );
                 })}
@@ -232,7 +244,7 @@ const PlayerZone: React.FC<{
           {!isCurrentUser && (
             <div className="flex-shrink-0 h-1 overflow-visible">
               <div className="flex justify-center -mt-2" style={{transform: 'translateY(-40%)'}}>
-                {player.hand.map((card) => {
+                {player.hand.map((card, idx) => {
                   const isDraggingThis = dragState?.isDragging && dragState?.cardId === card.id;
                   if (isDraggingThis) return null;
                   return (
@@ -243,6 +255,8 @@ const PlayerZone: React.FC<{
                         scale={cardScale}
                         hidden={true}
                         onHover={onHoverCard}
+                        handIndex={handIndexArray[idx]}
+                        zIndex={idx}
                       />
                     </div>
                   );
