@@ -48,12 +48,13 @@ const Card: React.FC<{
   hidden?: boolean;
   isDragging?: boolean;
   style?: React.CSSProperties;
-}> = ({ card, onTap, onMouseDown, onHover, size = 'md', hidden = false, isDragging = false, style }) => {
+  scale?: number;
+}> = ({ card, onTap, onMouseDown, onHover, size = 'md', hidden = false, isDragging = false, style, scale = 100 }) => {
   const sizeClasses = {
-    xs: 'w-10 h-14',
-    sm: 'w-16 h-24',
-    md: 'w-24 h-36',
-    lg: 'w-32 h-48',
+    xs: 'h-24',
+    sm: 'h-36',
+    md: 'h-80',
+    lg: 'h-112',
   };
 
   const imageUrl = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal;
@@ -90,6 +91,12 @@ const Card: React.FC<{
     }
   };
 
+  const rotation = card.is_tapped ? 90 : 0;
+  const scaleTransform = scale !== 100 ? `scale(${scale / 100})` : '';
+  const rotationTransform = rotation !== 0 ? `rotate(${rotation}deg)` : '';
+  const combinedTransform = [scaleTransform, rotationTransform].filter(Boolean).join(' ');
+  const scaleStyle = combinedTransform ? { ...style, transform: combinedTransform } : style;
+
   return (
     <div
       onMouseDown={handleMouseDown}
@@ -99,18 +106,21 @@ const Card: React.FC<{
       onMouseLeave={handleMouseLeave}
       className={`
         ${sizeClasses[size]} 
-        rounded-lg border-2 border-gray-600 bg-gray-800 
+        
         flex items-center justify-center cursor-grab select-none
         transition-all duration-200
-        ${card.is_tapped ? 'rotate-90' : ''}
         ${isDragging ? 'opacity-80 scale-105 cursor-grabbing z-50' : 'hover:scale-105 hover:border-yellow-500'}
         ${hidden ? 'bg-gray-900 border-dashed' : ''}
       `}
-      style={style}
+      style={scaleStyle}
       title={hidden ? cardName : `${cardName}\n${card.mana_cost || ''}\n${card.type_line || ''}`}
     >
       {hidden ? (
-        <div className="text-gray-500 text-xs text-center p-1">Hidden</div>
+        <img 
+          src="https://static.wikia.nocookie.net/mtgsalvation_gamepedia/images/f/f8/Magic_card_back.jpg"
+          alt="Card Back"
+          className="w-full h-full object-cover rounded-md pointer-events-none"
+        />
       ) : imageUrl ? (
         <img 
           src={imageUrl} 
@@ -135,17 +145,27 @@ const PlayerZone: React.FC<{
   onHoverCard?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null, position: { x: number; y: number }) => void;
   onMouseDownCard?: (card: GameCardInBattlefield, e: React.MouseEvent) => void;
   onMouseDownHand?: (card: GameCard, e: React.MouseEvent) => void;
+  onMouseDownCommander?: (card: GameCard, e: React.MouseEvent) => void;
+  onMouseDownGraveyard?: (card: GameCard, e: React.MouseEvent) => void;
+  onMouseDownExile?: (card: GameCard, e: React.MouseEvent) => void;
   battlefieldRef?: React.RefObject<HTMLDivElement | null>;
+  handRef?: React.RefObject<HTMLDivElement | null> | ((el: HTMLDivElement | null) => void);
+  commanderRef?: React.RefObject<HTMLDivElement | null> | ((el: HTMLDivElement | null) => void);
+  graveyardRef?: React.RefObject<HTMLDivElement | null> | ((el: HTMLDivElement | null) => void);
+  exileRef?: React.RefObject<HTMLDivElement | null> | ((el: HTMLDivElement | null) => void);
   dragState?: {
     isDragging: boolean;
     cardId: number;
-    source: 'battlefield' | 'hand';
+    source: 'battlefield' | 'hand' | 'commander' | 'graveyard' | 'exile';
     cardX: number;
     cardY: number;
   } | null;
-}> = ({ player, isCurrentUser, isActive, onTapCard, onHoverCard, onMouseDownCard, onMouseDownHand, battlefieldRef, dragState }) => {
+  cardScale?: number;
+}> = ({ player, isCurrentUser, isActive, onTapCard, onHoverCard, onMouseDownCard, onMouseDownHand, onMouseDownCommander, onMouseDownGraveyard, onMouseDownExile, battlefieldRef, handRef, commanderRef, graveyardRef, exileRef, dragState, cardScale = 100 }) => {
+  const backgroundColor = isCurrentUser ? 'darkslateblue' : 'darkslategray';
+
   return (
-    <div className={`p-2 rounded-lg flex-1 flex flex-col ${isActive ? 'bg-yellow-900/30 border-2 border-yellow-500' : 'bg-gray-800/50 border border-gray-700'}`}>
+    <div className={`p-2 rounded-lg flex-1 flex flex-col relative ${isActive ? 'bg-yellow-900/30 border-2 border-yellow-500' : 'bg-gray-800/50 border border-gray-700'}`} style={{backgroundColor}}>
       <div className="flex gap-2 flex-1 min-h-0">
         <div className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 min-h-0">
@@ -171,6 +191,7 @@ const PlayerZone: React.FC<{
                       <Card 
                         card={card} 
                         size="sm"
+                        scale={cardScale}
                         onTap={() => onTapCard?.(card.id)}
                         onMouseDown={isCurrentUser ? (e) => onMouseDownCard?.(card, e) : undefined}
                         onHover={onHoverCard}
@@ -188,50 +209,85 @@ const PlayerZone: React.FC<{
             </div>
           </div>
 
-          <div className="flex-shrink-0">
-            <h4 className="text-xs text-gray-500 uppercase mb-1 text-center">Hand ({player.hand.length})</h4>
-            <div className="flex flex-wrap justify-center gap-1 min-h-[40px] p-1 bg-gray-900/50 rounded">
-              {player.hand.map((card) => {
-                const isDraggingThis = dragState?.isDragging && dragState?.cardId === card.id;
-                if (isDraggingThis) return null;
-                return (
-                  <Card 
-                    key={card.id} 
-                    card={card} 
-                    size="xs"
-                    hidden={!isCurrentUser}
-                    onMouseDown={isCurrentUser ? (e) => onMouseDownHand?.(card, e) : undefined}
-                    onHover={onHoverCard}
-                  />
-                );
-              })}
-            </div>
+          {isCurrentUser && (
+            <div className="fixed bottom-0 left-0 right-40 z-20 pointer-events-none" style={{transform: 'translateY(40%)'}}>
+              <div ref={handRef as any} className="flex justify-center gap-1 p-2 pointer-events-auto">
+                {player.hand.map((card) => {
+                  const isDraggingThis = dragState?.isDragging && dragState?.cardId === card.id;
+                  if (isDraggingThis) return null;
+                  return (
+                    <Card 
+                      key={card.id} 
+                      card={card} 
+                      size="sm"
+                      scale={cardScale}
+                      onMouseDown={(e) => onMouseDownHand?.(card, e)}
+                      onHover={onHoverCard}
+                    />
+                  );
+                })}
               </div>
-              {dragState?.isDragging && dragState?.source === 'hand' && (() => {
-                const draggedCard = player.hand.find(c => c.id === dragState.cardId);
-                if (!draggedCard) return null;
-                return (
-                  <div
-                    className="absolute pointer-events-none z-50"
-                    style={{
-                      left: dragState.cardX - 20,
-                      top: dragState.cardY - 28,
-                    }}
-                  >
-                    <Card card={draggedCard} size="sm" isDragging />
-                  </div>
-                );
-              })()}
             </div>
+          )}
+          {!isCurrentUser && (
+            <div className="flex-shrink-0 h-1 overflow-visible">
+              <div className="flex justify-center -mt-2" style={{transform: 'translateY(-40%)'}}>
+                {player.hand.map((card) => {
+                  const isDraggingThis = dragState?.isDragging && dragState?.cardId === card.id;
+                  if (isDraggingThis) return null;
+                  return (
+                    <div key={card.id} className="-ml-4 first:ml-0">
+                      <Card 
+                        card={card} 
+                        size="sm"
+                        scale={cardScale}
+                        hidden={true}
+                        onHover={onHoverCard}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
 
-          <div className="w-20 flex-shrink-0">
-            <h4 className="text-xs text-gray-500 uppercase mb-1">Cmd</h4>
-            <div className="flex flex-col gap-1 min-h-[40px] p-1 bg-gray-900/50 rounded">
+        <div className="w-20 flex-shrink-0">
+            <div className="text-center text-xs text-gray-500 mb-1">
+              Life
+            </div>
+            <div className="text-center text-lg font-bold mb-2">
+              <span className={player.life_total <= 10 ? 'text-red-400' : 'text-white'}>
+                {player.life_total}
+              </span>
+            </div>
+            <div className="text-center text-xs text-gray-500 mb-1">
+              Library
+            </div>
+            <div className="text-center text-lg font-bold mb-1">
+              <span className="text-gray-400">
+                {player.library.length}
+              </span>
+            </div>
+            <div 
+              className="w-16 h-24 mx-auto rounded-lg overflow-hidden cursor-pointer hover:scale-105 transition-transform border border-gray-600"
+              style={{ transform: `scale(${cardScale / 100})` }}
+            >
+              <img 
+                src="https://static.wikia.nocookie.net/mtgsalvation_gamepedia/images/f/f8/Magic_card_back.jpg" 
+                alt="Card Back"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <h4 className="text-xs text-gray-500 uppercase mb-1 mt-2 text-center">Cmd</h4>
+            <div ref={commanderRef as any} className="flex justify-center gap-1 min-h-[100px] p-1 bg-gray-900/50 rounded">
               {player.commander.map((card) => (
                 <Card 
                   key={card.id} 
                   card={card} 
-                  size="xs"
+                  size="sm"
+                  scale={cardScale}
+                  onMouseDown={isCurrentUser ? (e) => onMouseDownCommander?.(card, e) : undefined}
                   onHover={onHoverCard}
                 />
               ))}
@@ -239,23 +295,61 @@ const PlayerZone: React.FC<{
 
             <div className="mt-2">
               <h4 className="text-xs text-gray-500 uppercase mb-1">Grave</h4>
-              <div className="flex flex-wrap gap-0.5 min-h-[20px] p-1 bg-gray-900/50 rounded overflow-x-auto">
+              <div ref={graveyardRef as any} className="flex flex-wrap gap-0.5 min-h-[20px] p-1 bg-gray-900/50 rounded overflow-x-auto">
                 {player.graveyard.slice(0, 3).map((card) => (
-                  <Card key={card.id} card={card} size="xs" onHover={onHoverCard} />
+                  <Card 
+                    key={card.id} 
+                    card={card} 
+                    size="xs" 
+                    scale={cardScale} 
+                    onMouseDown={isCurrentUser ? (e) => onMouseDownGraveyard?.(card, e) : undefined}
+                    onHover={onHoverCard} 
+                  />
                 ))}
               </div>
             </div>
 
             <div className="mt-2">
               <h4 className="text-xs text-gray-500 uppercase mb-1">Exile</h4>
-              <div className="flex flex-wrap gap-0.5 min-h-[20px] p-1 bg-gray-900/50 rounded overflow-x-auto">
+              <div ref={exileRef as any} className="flex flex-wrap gap-0.5 min-h-[20px] p-1 bg-gray-900/50 rounded overflow-x-auto">
                 {player.exile.slice(0, 3).map((card) => (
-                  <Card key={card.id} card={card} size="xs" onHover={onHoverCard} />
+                  <Card 
+                    key={card.id} 
+                    card={card} 
+                    size="xs" 
+                    scale={cardScale} 
+                    onMouseDown={isCurrentUser ? (e) => onMouseDownExile?.(card, e) : undefined}
+                    onHover={onHoverCard} 
+                  />
                 ))}
               </div>
             </div>
           </div>
       </div>
+      {dragState?.isDragging && isCurrentUser && (() => {
+        let draggedCard;
+        if (dragState.source === 'hand') {
+          draggedCard = player.hand.find(c => c.id === dragState.cardId);
+        } else if (dragState.source === 'commander') {
+          draggedCard = player.commander.find(c => c.id === dragState.cardId);
+        } else if (dragState.source === 'graveyard') {
+          draggedCard = player.graveyard.find(c => c.id === dragState.cardId);
+        } else if (dragState.source === 'exile') {
+          draggedCard = player.exile.find(c => c.id === dragState.cardId);
+        }
+        if (!draggedCard) return null;
+        return (
+          <div
+            className="fixed pointer-events-none z-50"
+            style={{
+              left: dragState.cardX - 20,
+              top: dragState.cardY - 28,
+            }}
+          >
+            <Card card={draggedCard} size="sm" scale={cardScale} isDragging />
+          </div>
+        );
+      })()}
     </div>
   );
 };
@@ -274,6 +368,8 @@ const GamePage: React.FC = () => {
     playCard, 
     tapCard,
     updateBattlefieldPosition,
+    passPriority,
+    moveCard,
   } = useGameStateStore();
 
   const [hoveredCard, setHoveredCard] = useState<{
@@ -284,14 +380,36 @@ const GamePage: React.FC = () => {
   const [dragState, setDragState] = useState<{
     isDragging: boolean;
     cardId: number;
-    source: 'battlefield' | 'hand';
+    source: 'battlefield' | 'hand' | 'commander' | 'graveyard' | 'exile';
     cardX: number;
     cardY: number;
     clickOffsetX: number;
     clickOffsetY: number;
   } | null>(null);
 
+  const [cardScale, setCardScale] = useState(100);
+
   const battlefieldRef = React.useRef<HTMLDivElement>(null);
+  const handRef = React.useRef<HTMLDivElement>(null);
+  const commanderRef = React.useRef<HTMLDivElement>(null);
+  const graveyardRef = React.useRef<HTMLDivElement>(null);
+  const exileRef = React.useRef<HTMLDivElement>(null);
+
+  const setHandRef = React.useCallback((el: HTMLDivElement | null) => {
+    handRef.current = el;
+  }, []);
+
+  const setCommanderRef = React.useCallback((el: HTMLDivElement | null) => {
+    commanderRef.current = el;
+  }, []);
+
+  const setGraveyardRef = React.useCallback((el: HTMLDivElement | null) => {
+    graveyardRef.current = el;
+  }, []);
+
+  const setExileRef = React.useCallback((el: HTMLDivElement | null) => {
+    exileRef.current = el;
+  }, []);
 
   const currentPlayer = gameState?.players.find(p => p.user_id === user?.id);
 
@@ -328,6 +446,11 @@ const GamePage: React.FC = () => {
     await tapCard(parseInt(gameId), cardId);
   };
 
+  const handlePassPriority = async () => {
+    if (!gameId) return;
+    await passPriority(parseInt(gameId));
+  };
+
   const handleMouseDownBattlefield = (card: GameCardInBattlefield, e: React.MouseEvent) => {
     if (!battlefieldRef.current) return;
     
@@ -361,6 +484,42 @@ const GamePage: React.FC = () => {
     });
   };
 
+  const handleMouseDownCommander = (card: GameCard, e: React.MouseEvent) => {
+    setDragState({
+      isDragging: true,
+      cardId: card.id,
+      source: 'commander',
+      cardX: e.clientX,
+      cardY: e.clientY,
+      clickOffsetX: 0,
+      clickOffsetY: 0,
+    });
+  };
+
+  const handleMouseDownGraveyard = (card: GameCard, e: React.MouseEvent) => {
+    setDragState({
+      isDragging: true,
+      cardId: card.id,
+      source: 'graveyard',
+      cardX: e.clientX,
+      cardY: e.clientY,
+      clickOffsetX: 0,
+      clickOffsetY: 0,
+    });
+  };
+
+  const handleMouseDownExile = (card: GameCard, e: React.MouseEvent) => {
+    setDragState({
+      isDragging: true,
+      cardId: card.id,
+      source: 'exile',
+      cardX: e.clientX,
+      cardY: e.clientY,
+      clickOffsetX: 0,
+      clickOffsetY: 0,
+    });
+  };
+
   useEffect(() => {
     if (!dragState) return;
 
@@ -369,7 +528,7 @@ const GamePage: React.FC = () => {
       
       const rect = battlefieldRef.current.getBoundingClientRect();
       
-      if (dragState.source === 'hand') {
+      if (dragState.source === 'hand' || dragState.source === 'commander' || dragState.source === 'graveyard' || dragState.source === 'exile') {
         setDragState(prev => prev ? { ...prev, cardX: e.clientX, cardY: e.clientY } : null);
       } else {
         const x = e.clientX - rect.left - dragState.clickOffsetX;
@@ -378,38 +537,74 @@ const GamePage: React.FC = () => {
       }
     };
 
-    const handleMouseUp = async () => {
-      if (!dragState || !battlefieldRef.current || !gameId) {
+    const isOverElement = (e: MouseEvent, ref: React.RefObject<HTMLDivElement | null>) => {
+      if (!ref.current) return false;
+      const rect = ref.current.getBoundingClientRect();
+      return e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom;
+    };
+
+    const handleMouseUp = async (e: MouseEvent) => {
+      if (!dragState || !gameId) {
         setDragState(null);
         return;
       }
 
-      const rect = battlefieldRef.current.getBoundingClientRect();
+      const gameIdNum = parseInt(gameId);
       const x = dragState.cardX;
       const y = dragState.cardY;
 
-      const isInside = 
-        x >= rect.left && 
-        x <= rect.right && 
-        y >= rect.top && 
-        y <= rect.bottom;
+      // Check if dropping on battlefield
+      if (battlefieldRef.current) {
+        const bfRect = battlefieldRef.current.getBoundingClientRect();
+        const isInsideBf = x >= bfRect.left && x <= bfRect.right && y >= bfRect.top && y <= bfRect.bottom;
 
-      if (dragState.source === 'hand' && isInside) {
-        const localX = dragState.cardX - rect.left - 32;
-        const localY = dragState.cardY - rect.top - 48;
-        await playCard(parseInt(gameId), dragState.cardId, localX, localY);
-      } else if (dragState.source === 'battlefield') {
-        const localX = dragState.cardX;
-        const localY = dragState.cardY;
-        const isValidPosition = 
-          localX >= 0 && 
-          localX <= rect.width - 64 && 
-          localY >= 0 && 
-          localY <= rect.height - 96;
-
-        if (isValidPosition) {
-          await updateBattlefieldPosition(parseInt(gameId), dragState.cardId, localX, localY);
+        if ((dragState.source === 'hand' || dragState.source === 'commander') && isInsideBf) {
+          const localX = x - bfRect.left - 32;
+          const localY = y - bfRect.top - 48;
+          await playCard(gameIdNum, dragState.cardId, localX, localY);
+          setDragState(null);
+          return;
         }
+
+        if (dragState.source === 'battlefield') {
+          const localX = x;
+          const localY = y;
+          const isValidPosition = localX >= 0 && localX <= bfRect.width - 64 && localY >= 0 && localY <= bfRect.height - 96;
+
+          if (isValidPosition) {
+            await updateBattlefieldPosition(gameIdNum, dragState.cardId, localX, localY);
+            setDragState(null);
+            return;
+          }
+        }
+      }
+
+      // Check if dropping on hand
+      if (isCurrentUser && isOverElement(e, handRef)) {
+        await moveCard(gameIdNum, dragState.cardId, 'hand', 0);
+        setDragState(null);
+        return;
+      }
+
+      // Check if dropping on commander
+      if (isCurrentUser && isOverElement(e, commanderRef)) {
+        await moveCard(gameIdNum, dragState.cardId, 'commander', 0);
+        setDragState(null);
+        return;
+      }
+
+      // Check if dropping on graveyard
+      if (isCurrentUser && isOverElement(e, graveyardRef)) {
+        await moveCard(gameIdNum, dragState.cardId, 'graveyard', 0);
+        setDragState(null);
+        return;
+      }
+
+      // Check if dropping on exile
+      if (isCurrentUser && isOverElement(e, exileRef)) {
+        await moveCard(gameIdNum, dragState.cardId, 'exile', 0);
+        setDragState(null);
+        return;
       }
 
       setDragState(null);
@@ -457,7 +652,7 @@ const GamePage: React.FC = () => {
   const isCurrentUserActive = currentPlayer?.is_active || false;
 
   return (
-    <div className="w-screen h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 overflow-hidden select-none">
+    <div className="w-screen h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 overflow-x-hidden select-none">
       <div className="absolute top-2 left-2 z-10">
         <button
           onClick={() => navigate(`/playground/game/${gameId}`)}
@@ -488,20 +683,31 @@ const GamePage: React.FC = () => {
               if (b.user_id === user?.id) return -1;
               return a.player_order - b.player_order;
             })
-            .map((player) => (
-              <PlayerZone
-                key={player.id}
-                player={player}
-                isCurrentUser={player.user_id === user?.id}
-                isActive={player.is_active}
-                onTapCard={player.user_id === user?.id ? handleTapCard : undefined}
-                onHoverCard={(card, position) => setHoveredCard(card ? { card, position } : null)}
-                onMouseDownCard={player.user_id === user?.id ? handleMouseDownBattlefield : undefined}
-                onMouseDownHand={player.user_id === user?.id ? handleMouseDownHand : undefined}
-                battlefieldRef={battlefieldRef}
-                dragState={player.user_id === user?.id ? dragState : null}
-              />
-            ))}
+            .map((player) => {
+              const isCurrentUserPlayer = player.user_id === user?.id;
+              return (
+                <PlayerZone
+                  key={player.id}
+                  player={player}
+                  isCurrentUser={isCurrentUserPlayer}
+                  isActive={player.is_active}
+                  onTapCard={isCurrentUserPlayer ? handleTapCard : undefined}
+                  onHoverCard={(card, position) => setHoveredCard(card ? { card, position } : null)}
+                  onMouseDownCard={isCurrentUserPlayer ? handleMouseDownBattlefield : undefined}
+                  onMouseDownHand={isCurrentUserPlayer ? handleMouseDownHand : undefined}
+                  onMouseDownCommander={isCurrentUserPlayer ? handleMouseDownCommander : undefined}
+                  onMouseDownGraveyard={isCurrentUserPlayer ? handleMouseDownGraveyard : undefined}
+                  onMouseDownExile={isCurrentUserPlayer ? handleMouseDownExile : undefined}
+                  battlefieldRef={battlefieldRef}
+                  handRef={isCurrentUserPlayer ? (el: any) => { handRef.current = el; } : undefined}
+                  commanderRef={isCurrentUserPlayer ? (el: any) => { commanderRef.current = el; } : undefined}
+                  graveyardRef={isCurrentUserPlayer ? (el: any) => { graveyardRef.current = el; } : undefined}
+                  exileRef={isCurrentUserPlayer ? (el: any) => { exileRef.current = el; } : undefined}
+                  dragState={isCurrentUserPlayer ? dragState : null}
+                  cardScale={cardScale}
+                />
+              );
+            })}
         </div>
 
         <div className="w-40 flex-shrink-0 flex flex-col gap-2">
@@ -511,6 +717,7 @@ const GamePage: React.FC = () => {
           </div>
 
           <div className="bg-yellow-900/50 rounded p-2 text-center border border-yellow-700">
+            <div className="text-gray-400 text-xs">Phase</div>
             <div className="text-yellow-400 text-xs font-semibold">
               {TURN_PHASE_LABELS[gameState.current_phase]}
             </div>
@@ -521,45 +728,26 @@ const GamePage: React.FC = () => {
             <div className="text-white text-sm truncate">{gameState.active_player_username}</div>
           </div>
 
-          <div className="flex-1" />
-
-          <div className="bg-gray-800 rounded p-2">
-            <div className="text-gray-400 text-xs uppercase mb-2 text-center">Players</div>
-            <div className="flex flex-col gap-2">
-              {gameState.players
-                .sort((a, b) => a.player_order - b.player_order)
-                .map((player) => (
-                  <div 
-                    key={player.id} 
-                    className={`flex items-center justify-between p-1 rounded ${player.is_active ? 'bg-yellow-900/50 border border-yellow-600' : 'bg-gray-900/50'}`}
-                  >
-                    <div className="flex items-center gap-1">
-                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs">
-                        {player.username.charAt(0).toUpperCase()}
-                      </div>
-                      <span className={`text-xs truncate max-w-[80px] ${player.user_id === user?.id ? 'text-yellow-400' : 'text-gray-300'}`}>
-                        {player.username}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className={`text-sm font-bold ${player.life_total <= 10 ? 'text-red-400' : 'text-white'}`}>
-                        {player.life_total}
-                      </span>
-                      {player.poison_counters > 0 && (
-                        <span className="text-green-400 text-xs">({player.poison_counters})</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+          <div className="bg-gray-800 rounded p-2 text-center">
+            <div className="text-gray-400 text-xs mb-1">Card Size</div>
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={() => setCardScale(s => Math.max(50, s - 10))}
+                className="w-6 h-6 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm font-bold"
+              >
+                -
+              </button>
+              <span className="text-white text-sm font-medium w-10">{cardScale}%</span>
+              <button
+                onClick={() => setCardScale(s => Math.min(150, s + 10))}
+                className="w-6 h-6 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm font-bold"
+              >
+                +
+              </button>
             </div>
           </div>
 
-          {currentPlayer && (
-            <div className="bg-gray-800 rounded p-2 text-center">
-              <div className="text-gray-400 text-xs">Your Library</div>
-              <div className="text-white font-bold">{currentPlayer.library.length}</div>
-            </div>
-          )}
+          <div className="flex-1" />
 
           {isCurrentUserActive && currentPlayer && (
             <div className="flex flex-col gap-2">
@@ -577,6 +765,13 @@ const GamePage: React.FC = () => {
               >
                 <ArrowRightIcon className="h-4 w-4" />
                 Draw
+              </button>
+              <button
+                onClick={handlePassPriority}
+                disabled={isLoading}
+                className="flex items-center justify-center gap-1 px-2 py-2 bg-yellow-600 hover:bg-yellow-500 text-white rounded transition-colors text-sm disabled:opacity-50"
+              >
+                Pass Priority
               </button>
             </div>
           )}

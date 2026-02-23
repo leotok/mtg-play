@@ -15,6 +15,7 @@ interface GameStateStore {
   tapCard: (gameId: number, cardId: number) => Promise<void>;
   updateBattlefieldPosition: (gameId: number, cardId: number, x: number, y: number) => Promise<void>;
   moveCard: (gameId: number, cardId: number, targetZone: string, position: number) => Promise<void>;
+  passPriority: (gameId: number) => Promise<void>;
   setGameState: (state: GameState) => void;
   clearGameState: () => void;
 }
@@ -125,6 +126,19 @@ export const useGameStateStore = create<GameStateStore>((set) => ({
     } catch (err: any) {
       set({ 
         error: err.response?.data?.detail || 'Failed to move card', 
+        isLoading: false 
+      });
+    }
+  },
+
+  passPriority: async (gameId: number) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await apiClient.post<GameState>(`/games/${gameId}/pass-priority`);
+      set({ gameState: response, isLoading: false });
+    } catch (err: any) {
+      set({ 
+        error: err.response?.data?.detail || 'Failed to pass priority', 
         isLoading: false 
       });
     }
