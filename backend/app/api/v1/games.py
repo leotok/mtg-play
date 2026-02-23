@@ -335,3 +335,13 @@ async def untap_all(
 ):
     """Untap all of the current player's cards"""
     return await game_service.untap_all(game_id, current_user)
+
+
+@router.post("/{game_id}/pass-priority", response_model=GameStateResponse)
+async def pass_priority(
+    game_id: int,
+    current_user: User = Depends(get_current_user),
+    game_service: GameService = Depends(get_game_service)
+):
+    """Pass priority and advance the game phase"""
+    return await game_service.pass_priority(game_id, current_user)

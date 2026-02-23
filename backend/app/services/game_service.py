@@ -514,7 +514,7 @@ class GameService:
                 life_total=ps.life_total,
                 poison_counters=ps.poison_counters,
                 library=[GameCardResponse(**self._card_to_dict(c, is_current_user)) for c in library] if is_current_user else [],
-                hand=[GameCardResponse(**self._card_to_dict(c, is_current_user)) for c in hand] if is_current_user else [],
+                hand=[GameCardResponse(**self._card_to_dict(c, is_current_user)) for c in hand] if is_current_user else [GameCardResponse(**self._card_to_dict(c, False)) for c in hand],
                 battlefield=[GameCardInBattlefieldResponse(**self._card_to_battlefield_dict(c)) for c in battlefield],
                 graveyard=[GameCardResponse(**self._card_to_dict(c, True)) for c in graveyard],
                 exile=[GameCardResponse(**self._card_to_dict(c, True)) for c in exile],
@@ -658,10 +658,10 @@ class GameService:
                 detail="This card is not yours"
             )
         
-        if card.zone != CardZone.HAND.value:
+        if card.zone not in [CardZone.HAND.value, CardZone.COMMANDER.value]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Card is not in hand"
+                detail="Card is not in hand or commander"
             )
         
         hand_cards = self.game_card_repo.get_player_cards_in_zone(player_state.id, CardZone.HAND)
@@ -828,6 +828,83 @@ class GameService:
         
         return await self.get_game_state(game_id, current_user)
     
+    async def pass_priority(
+        self,
+        game_id: int,
+        current_user: User
+    ) -> GameStateResponse:
+        game = self._get_game_or_404(game_id)
+        
+        if game.status != GameStatus.IN_PROGRESS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Game is not in progress"
+            )
+        
+        game_state = self.game_state_repo.get_by_game_room_id(game_id)
+        if not game_state:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Game state not found"
+            )
+        
+        player_state = self.player_game_state_repo.get_by_game_state_and_user(
+            game_state.id, current_user.id
+        )
+        if not player_state:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not in this game"
+            )
+        
+        if player_state.user_id != game_state.active_player_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only the active player can pass priority"
+            )
+        
+        phase_order = [
+            TurnPhase.UNTAP,
+            TurnPhase.UPKEEP,
+            TurnPhase.DRAW,
+            TurnPhase.MAIN1,
+            TurnPhase.COMBAT_START,
+            TurnPhase.COMBAT_ATTACK,
+            TurnPhase.COMBAT_BLOCK,
+            TurnPhase.COMBAT_DAMAGE,
+            TurnPhase.COMBAT_END,
+            TurnPhase.MAIN2,
+            TurnPhase.END,
+            TurnPhase.CLEANUP,
+        ]
+        
+        current_phase = TurnPhase(game_state.current_phase)
+        current_index = phase_order.index(current_phase)
+        
+        if current_index < len(phase_order) - 1:
+            next_phase = phase_order[current_index + 1]
+            game_state.current_phase = next_phase.value
+        else:
+            player_states = self.player_game_state_repo.get_by_game_state(game_state.id)
+            current_player_state = next((p for p in player_states if p.user_id == game_state.active_player_id), None)
+            
+            if current_player_state:
+                current_order = current_player_state.player_order
+                next_order = (current_order + 1) % len(player_states)
+                next_player_state = next((p for p in player_states if p.player_order == next_order), None)
+                
+                if next_player_state:
+                    game_state.active_player_id = next_player_state.user_id
+                    game_state.current_turn += 1
+                    game_state.current_phase = TurnPhase.UNTAP.value
+                    
+                    for p in player_states:
+                        p.is_active = (p.user_id == next_player_state.user_id)
+        
+        self.game_state_repo.db.commit()
+        
+        return await self.get_game_state(game_id, current_user)
+
     async def untap_all(
         self,
         game_id: int,
