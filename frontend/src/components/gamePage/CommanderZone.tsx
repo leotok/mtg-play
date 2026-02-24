@@ -11,17 +11,20 @@ export const CommanderZone: React.FC<{
     isCurrentUser: boolean;
     onMouseDownCommander?: (card: GameCard, e: React.MouseEvent) => void;
     onHoverCard?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null, position: { x: number; y: number }) => void;
-}> = ({ player, commanderRef, cardScale, hoveredZone, isCurrentUser, onMouseDownCommander, onHoverCard }) => {
+    className?: string;
+}> = ({ player, commanderRef, cardScale, hoveredZone, isCurrentUser, onMouseDownCommander, onHoverCard, className = '' }) => {
     return (
-        <div>
-           
-            <h4 className="text-xs text-gray-500 uppercase mb-1 mt-2 text-center">Cmd</h4>
-            <div 
-                ref={commanderRef as any} 
-                className={`flex justify-center gap-1 min-h-[100px] p-1 bg-gray-900/50 rounded transition-colors ${
-                hoveredZone === 'commander' ? 'border-2 border-yellow-400 bg-yellow-900/30' : ''
-                }`}
-            >
+        <div 
+            ref={commanderRef as any}
+            className={`w-24 h-36 relative overflow-hidden flex flex-col justify-end items-end transition-colors ${className} ${
+                hoveredZone === 'commander' ? 'bg-yellow-900/50 border-2 border-yellow-400' : ''
+            }`}
+            style={{top: 65}}
+        >
+            <span className="text-xs text-gray-500 uppercase absolute top-0 right-2">
+                Cmd ({player.commander.length})
+            </span>
+            <div className="flex -mt-8 justify-end">
                 {player.commander.map((card) => (
                     <Card 
                         key={card.id} 
@@ -33,7 +36,6 @@ export const CommanderZone: React.FC<{
                     />
                 ))}
             </div>
-
         </div>
     );
 };

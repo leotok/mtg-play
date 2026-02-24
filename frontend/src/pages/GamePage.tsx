@@ -328,7 +328,7 @@ const GamePage: React.FC = () => {
   const isCurrentUserActive = currentPlayer?.is_active || false;
 
   return (
-    <div className="w-screen h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 overflow-x-hidden select-none">
+    <div className="w-screen h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 overflow-hidden select-none">
 
       {/* Card Preview */}
 

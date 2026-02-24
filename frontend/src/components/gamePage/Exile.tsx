@@ -11,26 +11,30 @@ export const Exile: React.FC<{
     onMouseDownExile?: (card: GameCard, e: React.MouseEvent) => void;
     onHoverCard?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null, position: { x: number; y: number }) => void;
     cardScale: number;
-}> = ({ player, exileRef, hoveredZone, isCurrentUser, onMouseDownExile, onHoverCard, cardScale }) => {
+    className?: string;
+}> = ({ player, exileRef, hoveredZone, isCurrentUser, onMouseDownExile, onHoverCard, cardScale, className = '' }) => {
     return (
-        <div className="mt-2">
-            <h4 className="text-xs text-gray-500 uppercase mb-1">Exile</h4>
-            <div 
-            ref={exileRef as any} 
-            className={`flex justify-center gap-1 min-h-[100px] p-1 bg-gray-900/50 rounded transition-colors ${
-                hoveredZone === 'exile' ? 'border-2 border-yellow-400 bg-yellow-900/30' : ''
+        <div 
+            ref={exileRef as any}
+            className={`w-24 h-36 relative overflow-hidden flex flex-col justify-end items-end transition-colors ${className} ${
+                hoveredZone === 'exile' ? 'bg-yellow-900/50 border-2 border-yellow-400' : ''
             }`}
-            >
-            {player.exile.slice(0, 3).map((card) => (
-                <Card 
-                key={card.id} 
-                card={card} 
-                size="sm"
-                scale={cardScale} 
-                onMouseDown={isCurrentUser ? (e) => onMouseDownExile?.(card, e) : undefined}
-                onHover={onHoverCard} 
-                />
-            ))}
+            style={{top: 65}}
+        >
+            <span className="text-xs text-gray-500 uppercase absolute top-0 right-2">
+                Exile ({player.exile.length})
+            </span>
+            <div className="flex -mt-8 justify-end">
+                {player.exile.slice(0, 3).map((card) => (
+                    <Card 
+                        key={card.id} 
+                        card={card} 
+                        size="sm"
+                        scale={cardScale}
+                        onMouseDown={isCurrentUser ? (e) => onMouseDownExile?.(card, e) : undefined}
+                        onHover={onHoverCard}
+                    />
+                ))}
             </div>
         </div>
     );

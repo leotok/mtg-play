@@ -11,29 +11,31 @@ export const Graveyard: React.FC<{
     isCurrentUser: boolean;
     onMouseDownGraveyard?: (card: GameCard, e: React.MouseEvent) => void;
     onHoverCard?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null, position: { x: number; y: number }) => void;
-}> = ({ player, cardScale, graveyardRef, hoveredZone, isCurrentUser, onMouseDownGraveyard, onHoverCard }) => {
+    className?: string;
+}> = ({ player, cardScale, graveyardRef, hoveredZone, isCurrentUser, onMouseDownGraveyard, onHoverCard, className = '' }) => {
     return (
-        
-        <div className="mt-2">
-            <h4 className="text-xs text-gray-500 uppercase mb-1">Grave</h4>
-            <div 
-            ref={graveyardRef as any} 
-            className={`flex justify-center gap-1 min-h-[100px] p-1 bg-gray-900/50 rounded transition-colors ${
-                hoveredZone === 'graveyard' ? 'border-2 border-yellow-400 bg-yellow-900/30' : ''
+        <div 
+            ref={graveyardRef as any}
+            className={`w-24 h-36 relative overflow-hidden flex flex-col justify-end items-end transition-colors ${className} ${
+                hoveredZone === 'graveyard' ? 'bg-yellow-900/50 border-2 border-yellow-400' : ''
             }`}
-            >
-            {player.graveyard.slice(0, 3).map((card) => (
-                <Card 
-                key={card.id} 
-                card={card} 
-                size="sm"
-                scale={cardScale} 
-                onMouseDown={isCurrentUser ? (e) => onMouseDownGraveyard?.(card, e) : undefined}
-                onHover={onHoverCard} 
-                />
-            ))}
+            style={{top: 65}}
+        >
+            <span className="text-xs text-gray-500 uppercase absolute top-0 right-2">
+                Grave ({player.graveyard.length})
+            </span>
+            <div className="flex -mt-8 justify-end">
+                {player.graveyard.slice(0, 3).map((card) => (
+                    <Card 
+                        key={card.id} 
+                        card={card} 
+                        size="sm"
+                        scale={cardScale}
+                        onMouseDown={isCurrentUser ? (e) => onMouseDownGraveyard?.(card, e) : undefined}
+                        onHover={onHoverCard}
+                    />
+                ))}
             </div>
         </div>
-
     );
 };

@@ -41,71 +41,66 @@ export const PlayerZone: React.FC<{
 
   return (
     <div className={`p-2 rounded-lg flex-1 flex flex-col relative ${isActive ? 'bg-yellow-900/30 border-2 border-yellow-500' : 'bg-gray-800/50 border border-gray-700'}`} style={{backgroundColor}}>
-      <div className="flex gap-2 flex-1 min-h-0">
-        <div className="flex-1 flex flex-col min-h-0">
+      
+      <LifeCounter player={player} />
 
-          <Battlefield
+      <Battlefield
+        player={player}
+        isCurrentUser={isCurrentUser}
+        battlefieldRef={battlefieldRef}
+        hoveredZone={hoveredZone}
+        cardScale={cardScale}
+        dragState={dragState}
+        onTapCard={onTapCard}
+        onMouseDownCard={onMouseDownCard}
+        onHoverCard={onHoverCard}
+      />
+
+      <div className="h-[5%] flex gap-2 items-end">
+        <HandCards
+          player={player}
+          isCurrentUser={isCurrentUser}
+          handRef={handRef}
+          hoveredZone={hoveredZone}
+          cardScale={cardScale}
+          dragState={dragState}
+          onMouseDownHand={onMouseDownHand}
+          onHoverCard={onHoverCard}
+        />
+        
+        <div className="flex gap-2 ml-auto">
+          <CommanderZone
             player={player}
-            isCurrentUser={isCurrentUser}
-            battlefieldRef={battlefieldRef}
-            hoveredZone={hoveredZone}
+            commanderRef={commanderRef}
             cardScale={cardScale}
-            dragState={dragState}
-            onTapCard={onTapCard}
-            onMouseDownCard={onMouseDownCard}
+            hoveredZone={hoveredZone}
+            isCurrentUser={isCurrentUser}
+            onMouseDownCommander={onMouseDownCommander}
             onHoverCard={onHoverCard}
           />
 
-          <HandCards
+          <Graveyard
             player={player}
-            isCurrentUser={isCurrentUser}
-            handRef={handRef}
-            hoveredZone={hoveredZone}
             cardScale={cardScale}
-            dragState={dragState}
-            onMouseDownHand={onMouseDownHand}
+            graveyardRef={graveyardRef}
+            hoveredZone={hoveredZone}
+            isCurrentUser={isCurrentUser}
+            onMouseDownGraveyard={onMouseDownGraveyard}
             onHoverCard={onHoverCard}
           />
 
+          <Exile 
+            player={player}
+            exileRef={exileRef}
+            hoveredZone={hoveredZone}
+            isCurrentUser={isCurrentUser}
+            onMouseDownExile={onMouseDownExile}
+            onHoverCard={onHoverCard}
+            cardScale={cardScale}
+          />
+
+          <Library player={player} cardScale={cardScale} />
         </div>
-
-        <div className="w-20 flex-shrink-0">
-            
-            <LifeCounter player={player} />
-
-            <Library player={player} cardScale={cardScale} />
-            
-            <CommanderZone
-              player={player}
-              commanderRef={commanderRef}
-              cardScale={cardScale}
-              hoveredZone={hoveredZone}
-              isCurrentUser={isCurrentUser}
-              onMouseDownCommander={onMouseDownCommander}
-              onHoverCard={onHoverCard}
-            />
-
-            <Graveyard
-              player={player}
-              cardScale={cardScale}
-              graveyardRef={graveyardRef}
-              hoveredZone={hoveredZone}
-              isCurrentUser={isCurrentUser}
-              onMouseDownGraveyard={onMouseDownGraveyard}
-              onHoverCard={onHoverCard}
-            />
-
-            <Exile 
-              player={player}
-              exileRef={exileRef}
-              hoveredZone={hoveredZone}
-              isCurrentUser={isCurrentUser}
-              onMouseDownExile={onMouseDownExile}
-              onHoverCard={onHoverCard}
-              cardScale={cardScale}
-            />
-
-          </div>
       </div>
 
       <DraggingCard dragState={dragState} isCurrentUser={isCurrentUser} cardScale={cardScale} />
