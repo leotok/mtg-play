@@ -1,381 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import {
-  ArrowLeftIcon,
-  ArrowRightIcon,
-} from '@heroicons/react/24/outline';
 import { useAuth } from '../context/AuthContext';
 import { useGameStateStore } from '../store/gameStateStore';
 import { socketService } from '../services/socket';
-import { TURN_PHASE_LABELS, type GameCard, type GameCardInBattlefield, type PlayerGameState } from '../types/gameState';
+import { type GameCard, type CardZone, type GameCardInBattlefield } from '../types/gameState';
+import { CardPreview } from '../components/gamePage/CardPreview';
+import { PlayerZone } from '../components/gamePage/PlayerZone';
+import { GameSideBar } from '../components/gamePage/GameSideBar';
 
-const CardPreview: React.FC<{
-  card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string };
-  position: { x: number; y: number };
-  isOpponent?: boolean;
-  isCommander?: boolean;
-}> = ({ card, position, isOpponent = false, isCommander = false }) => {
-  const imageUrl = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal;
-  if (!imageUrl) return null;
-
-  const previewWidth = 256;
-  const aspectRatio = 1.4;
-  const previewHeight = previewWidth * aspectRatio;
-
-  return (
-    <div
-      className="fixed pointer-events-none z-50"
-      style={{
-        left: isCommander ? position.x - previewWidth : position.x,
-        top: isOpponent ? position.y : position.y - previewHeight - 10,
-      }}
-    >
-      <img
-        src={imageUrl}
-        alt={card.card_name}
-        className="w-64 h-auto rounded-lg shadow-2xl border-2 border-gray-600"
-      />
-    </div>
-  );
-};
-
-const Card: React.FC<{
-  card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string; is_tapped?: boolean; battlefield_x?: number; battlefield_y?: number; is_attacking?: boolean; is_blocking?: boolean; is_face_up?: boolean };
-  onTap?: () => void;
-  onMouseDown?: (e: React.MouseEvent) => void;
-  onHover?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null, position: { x: number; y: number }) => void;
-  size?: 'xs' | 'sm' | 'md' | 'lg';
-  hidden?: boolean;
-  isDragging?: boolean;
-  style?: React.CSSProperties;
-  scale?: number;
-  handIndex?: number;
-  zIndex?: number;
-}> = ({ card, onTap, onMouseDown, onHover, size = 'md', hidden = false, isDragging = false, style, scale = 100, handIndex = 0, zIndex = 0 }) => {
-  const sizeClasses = {
-    xs: 'h-24',
-    sm: 'h-36',
-    md: 'h-80',
-    lg: 'h-112',
-  };
-
-  const imageUrl = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal;
-  const cardName = hidden ? 'Unknown Card' : card.card_name;
-
-  const handleMouseEnter = (e: React.MouseEvent) => {
-    if (!hidden && onHover) {
-      onHover(card, { x: e.clientX, y: e.clientY });
-    }
-  };
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (onMouseDown) {
-      onMouseDown(e);
-    }
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!hidden && onHover) {
-      onHover(card, { x: e.clientX, y: e.clientY });
-    }
-  };
-
-  const handleDoubleClick = () => {
-    if (onTap) {
-      onTap();
-    }
-  };
-
-  const handleMouseLeave = () => {
-    if (onHover) {
-      onHover(null, { x: 0, y: 0 });
-    }
-  };
-
-  const left = handIndex * -40;
-  const top = Math.abs(handIndex * 8 );
-
-  const rotation = card.is_tapped ? 90 : (handIndex * 4);
-  const scaleTransform = scale !== 100 ? `scale(${scale / 100})` : '';
-  const rotationTransform = rotation !== 0 ? `rotate(${rotation}deg)` : '';
-  const combinedTransform = [scaleTransform, rotationTransform].filter(Boolean).join(' ');
-  const scaleStyle = combinedTransform ? { ...style, transform: combinedTransform } : style;
-
-  return (
-    <div
-      onMouseDown={handleMouseDown}
-      onDoubleClick={handleDoubleClick}
-      onMouseEnter={handleMouseEnter}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      className={`
-        ${sizeClasses[size]} 
-        
-        flex items-center justify-center cursor-grab select-none
-        transition-all duration-200
-        ${isDragging ? 'opacity-80 scale-105 cursor-grabbing z-50' : 'hover:scale-105 hover:border-yellow-500'}
-        ${hidden ? 'bg-gray-900 border-dashed' : ''}
-      `}
-      style={{...scaleStyle, zIndex, position: 'relative', left, top}}
-      title={hidden ? cardName : `${cardName}\n${card.mana_cost || ''}\n${card.type_line || ''}`}
-    >
-      {hidden ? (
-        <img 
-          src="https://static.wikia.nocookie.net/mtgsalvation_gamepedia/images/f/f8/Magic_card_back.jpg"
-          alt="Card Back"
-          className="w-full h-full object-cover rounded-md pointer-events-none"
-        />
-      ) : imageUrl ? (
-        <img 
-          src={imageUrl} 
-          alt={cardName}
-          className="w-full h-full object-cover rounded-md pointer-events-none"
-        />
-      ) : (
-        <div className="text-white text-xs text-center p-1 pointer-events-none">
-          <div className="font-bold">{cardName}</div>
-          {card.mana_cost && <div>{card.mana_cost}</div>}
-        </div>
-      )}
-    </div>
-  );
-};
-
-const PlayerZone: React.FC<{
-  player: PlayerGameState;
-  isCurrentUser: boolean;
-  isActive: boolean;
-  onTapCard?: (cardId: number) => void;
-  onHoverCard?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null, position: { x: number; y: number }) => void;
-  onMouseDownCard?: (card: GameCardInBattlefield, e: React.MouseEvent) => void;
-  onMouseDownHand?: (card: GameCard, e: React.MouseEvent) => void;
-  onMouseDownCommander?: (card: GameCard, e: React.MouseEvent) => void;
-  onMouseDownGraveyard?: (card: GameCard, e: React.MouseEvent) => void;
-  onMouseDownExile?: (card: GameCard, e: React.MouseEvent) => void;
-  battlefieldRef?: React.RefObject<HTMLDivElement | null>;
-  handRef?: React.RefObject<HTMLDivElement | null> | ((el: HTMLDivElement | null) => void);
-  commanderRef?: React.RefObject<HTMLDivElement | null> | ((el: HTMLDivElement | null) => void);
-  graveyardRef?: React.RefObject<HTMLDivElement | null> | ((el: HTMLDivElement | null) => void);
-  exileRef?: React.RefObject<HTMLDivElement | null> | ((el: HTMLDivElement | null) => void);
-  dragState?: {
-    isDragging: boolean;
-    cardId: number;
-    sourceZone: Zone;
-    card: GameCard | GameCardInBattlefield | null;
-    currentX: number;
-    currentY: number;
-  } | null;
-  hoveredZone?: Zone | null;
-  cardScale?: number;
-}> = ({ player, isCurrentUser, isActive, onTapCard, onHoverCard, onMouseDownCard, onMouseDownHand, onMouseDownCommander, onMouseDownGraveyard, onMouseDownExile, battlefieldRef, handRef, commanderRef, graveyardRef, exileRef, dragState, hoveredZone, cardScale = 100 }) => {
-  const backgroundColor = isCurrentUser ? 'darkslateblue' : 'darkslategray';
-
-
-  const handIndexArray = player.hand.map((_, idx) => {
-    return (idx - (player.hand.length/2));
-  });
-
-  return (
-    <div className={`p-2 rounded-lg flex-1 flex flex-col relative ${isActive ? 'bg-yellow-900/30 border-2 border-yellow-500' : 'bg-gray-800/50 border border-gray-700'}`} style={{backgroundColor}}>
-      <div className="flex gap-2 flex-1 min-h-0">
-        <div className="flex-1 flex flex-col min-h-0">
-          <div className="h-[95%] min-h-0 pb-1">
-            <h4 className="text-xs text-gray-500 uppercase mb-1">Battlefield ({player.battlefield.length})</h4>
-            <div 
-              ref={battlefieldRef}
-              className={`h-[calc(100%-1.5rem)] p-1 bg-green-900/20 border-2 rounded-lg relative select-none transition-colors ${
-                hoveredZone === 'battlefield' 
-                  ? 'border-yellow-400 bg-green-900/40' 
-                  : 'border-green-800 border-dashed'
-              }`}
-            >
-              {player.battlefield.map((card) => {
-                const isDraggingThis = dragState?.isDragging && dragState?.cardId === card.id;
-                if (isDraggingThis) return null;
-                return (
-                  <div
-                    key={card.id}
-                    className="absolute"
-                    style={{ 
-                      left: card.battlefield_x || 5, 
-                      top: card.battlefield_y || 5,
-                      transition: 'all 0.1s ease',
-                      zIndex: 1,
-                    }}
-                  >
-                    <Card 
-                      card={card} 
-                      size="sm"
-                      scale={cardScale}
-                      onTap={() => onTapCard?.(card.id)}
-                      onMouseDown={isCurrentUser ? (e) => onMouseDownCard?.(card, e) : undefined}
-                      onHover={onHoverCard}
-                    />
-                  </div>
-                );
-              })}
-              {player.battlefield.length === 0 && (
-                <div className="absolute inset-0 flex items-center justify-center text-gray-600 text-xs">
-                  Drop cards here
-                </div>
-              )}
-            </div>
-          </div>
-
-          {isCurrentUser && (
-            <div 
-              ref={handRef as any} 
-              className={`h-[5%] min-h-[20px] flex justify-center gap-1 p-1 rounded transition-colors ${
-                hoveredZone === 'hand' ? 'bg-yellow-900/50 border-2 border-yellow-400' : ''
-              }`}
-            >
-              {player.hand.map((card, idx) => {
-                const isDraggingThis = dragState?.isDragging && dragState?.cardId === card.id;
-                if (isDraggingThis) return null;
-                return (
-                  <Card 
-                    key={card.id} 
-                    card={card} 
-                    size="sm"
-                    scale={cardScale}
-                    onMouseDown={(e) => onMouseDownHand?.(card, e)}
-                    onHover={onHoverCard}
-                    handIndex={handIndexArray[idx]}
-                    zIndex={idx}
-                  />
-                );
-              })}
-            </div>
-          )}
-          {!isCurrentUser && (
-            <div className="flex-shrink-0 h-1 overflow-visible">
-              <div className="flex justify-center -mt-2" style={{transform: 'translateY(-40%)'}}>
-                {player.hand.map((card, idx) => {
-                  const isDraggingThis = dragState?.isDragging && dragState?.cardId === card.id;
-                  if (isDraggingThis) return null;
-                  return (
-                    <div key={card.id} className="-ml-4 first:ml-0">
-                      <Card 
-                        card={card} 
-                        size="sm"
-                        scale={cardScale}
-                        hidden={true}
-                        onHover={onHoverCard}
-                        handIndex={handIndexArray[idx]}
-                        zIndex={idx}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="w-20 flex-shrink-0">
-            <div className="text-center text-xs text-gray-500 mb-1">
-              Life
-            </div>
-            <div className="text-center text-lg font-bold mb-2">
-              <span className={player.life_total <= 10 ? 'text-red-400' : 'text-white'}>
-                {player.life_total}
-              </span>
-            </div>
-            <div className="text-center text-xs text-gray-500 mb-1">
-              Library
-            </div>
-            <div className="text-center text-lg font-bold mb-1">
-              <span className="text-gray-400">
-                {player.library.length}
-              </span>
-            </div>
-            <div 
-              className="w-16 h-24 mx-auto rounded-lg overflow-hidden cursor-pointer hover:scale-105 transition-transform border border-gray-600"
-              style={{ transform: `scale(${cardScale / 100})` }}
-            >
-              <img 
-                src="https://static.wikia.nocookie.net/mtgsalvation_gamepedia/images/f/f8/Magic_card_back.jpg" 
-                alt="Card Back"
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <h4 className="text-xs text-gray-500 uppercase mb-1 mt-2 text-center">Cmd</h4>
-            <div 
-              ref={commanderRef as any} 
-              className={`flex justify-center gap-1 min-h-[100px] p-1 bg-gray-900/50 rounded transition-colors ${
-                hoveredZone === 'commander' ? 'border-2 border-yellow-400 bg-yellow-900/30' : ''
-              }`}
-            >
-              {player.commander.map((card) => (
-                <Card 
-                  key={card.id} 
-                  card={card} 
-                  size="sm"
-                  scale={cardScale}
-                  onMouseDown={isCurrentUser ? (e) => onMouseDownCommander?.(card, e) : undefined}
-                  onHover={onHoverCard}
-                />
-              ))}
-            </div>
-
-            <div className="mt-2">
-              <h4 className="text-xs text-gray-500 uppercase mb-1">Grave</h4>
-              <div 
-                ref={graveyardRef as any} 
-                className={`flex justify-center gap-1 min-h-[100px] p-1 bg-gray-900/50 rounded transition-colors ${
-                  hoveredZone === 'graveyard' ? 'border-2 border-yellow-400 bg-yellow-900/30' : ''
-                }`}
-              >
-                {player.graveyard.slice(0, 3).map((card) => (
-                  <Card 
-                    key={card.id} 
-                    card={card} 
-                    size="sm"
-                    scale={cardScale} 
-                    onMouseDown={isCurrentUser ? (e) => onMouseDownGraveyard?.(card, e) : undefined}
-                    onHover={onHoverCard} 
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-2">
-              <h4 className="text-xs text-gray-500 uppercase mb-1">Exile</h4>
-              <div 
-                ref={exileRef as any} 
-                className={`flex justify-center gap-1 min-h-[100px] p-1 bg-gray-900/50 rounded transition-colors ${
-                  hoveredZone === 'exile' ? 'border-2 border-yellow-400 bg-yellow-900/30' : ''
-                }`}
-              >
-                {player.exile.slice(0, 3).map((card) => (
-                  <Card 
-                    key={card.id} 
-                    card={card} 
-                    size="sm"
-                    scale={cardScale} 
-                    onMouseDown={isCurrentUser ? (e) => onMouseDownExile?.(card, e) : undefined}
-                    onHover={onHoverCard} 
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-      </div>
-      {dragState && dragState.isDragging && isCurrentUser && dragState.card && (
-        <div
-          className="fixed pointer-events-none z-50"
-          style={{
-            left: dragState.currentX - 20,
-            top: dragState.currentY - 28,
-          }}
-        >
-          <Card card={dragState.card} size="sm" scale={cardScale} isDragging />
-        </div>
-      )}
-    </div>
-  );
-};
 
 const GamePage: React.FC = () => {
   const { gameId } = useParams<{ gameId: string }>();
@@ -400,18 +32,16 @@ const GamePage: React.FC = () => {
     position: { x: number; y: number };
   } | null>(null);
 
-type Zone = 'battlefield' | 'hand' | 'commander' | 'graveyard' | 'exile';
-
   const [dragState, setDragState] = useState<{
     isDragging: boolean;
     cardId: number;
-    sourceZone: Zone;
+    sourceZone: CardZone;
     card: GameCard | GameCardInBattlefield | null;
     currentX: number;
     currentY: number;
   } | null>(null);
 
-  const [hoveredZone, setHoveredZone] = useState<Zone | null>(null);
+  const [hoveredZone, setHoveredZone] = useState<CardZone | null>(null);
 
   const [cardScale, setCardScale] = useState(100);
 
@@ -699,15 +329,9 @@ type Zone = 'battlefield' | 'hand' | 'commander' | 'graveyard' | 'exile';
 
   return (
     <div className="w-screen h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 overflow-x-hidden select-none">
-      <div className="absolute top-2 left-2 z-10">
-        <button
-          onClick={() => navigate(`/playground/game/${gameId}`)}
-          className="flex items-center text-gray-400 hover:text-gray-200 transition-colors text-sm"
-        >
-          <ArrowLeftIcon className="h-4 w-4 mr-1" />
-          Back
-        </button>
-      </div>
+
+      {/* Card Preview */}
+
       {hoveredCard && !dragState?.isDragging && (() => {
         const currentUser = gameState.players.find(p => p.user_id === user?.id);
         const isCommander = gameState.players.some(p => p.commander.some(c => c.id === hoveredCard.card.id));
@@ -721,8 +345,14 @@ type Zone = 'battlefield' | 'hand' | 'commander' | 'graveyard' | 'exile';
         );
         return <CardPreview card={hoveredCard.card} position={hoveredCard.position} isOpponent={isOpponent} isCommander={isCommander} />;
       })()}
+
+      {/* Game Board */}
+      
       <div className="w-full h-full p-2 flex">
         <div className="flex-1 flex flex-col min-h-0 pr-2">
+
+          {/* Player Zones */}
+
           {gameState.players
             .sort((a, b) => {
               if (a.user_id === user?.id) return 1;
@@ -756,73 +386,19 @@ type Zone = 'battlefield' | 'hand' | 'commander' | 'graveyard' | 'exile';
               );
             })}
         </div>
-
-        <div className="w-40 flex-shrink-0 flex flex-col gap-2">
-          <div className="bg-gray-800 rounded p-2 text-center">
-            <div className="text-gray-400 text-xs">Turn</div>
-            <div className="text-white font-bold text-lg">{gameState.current_turn}</div>
-          </div>
-
-          <div className="bg-yellow-900/50 rounded p-2 text-center border border-yellow-700">
-            <div className="text-gray-400 text-xs">Phase</div>
-            <div className="text-yellow-400 text-xs font-semibold">
-              {TURN_PHASE_LABELS[gameState.current_phase]}
-            </div>
-          </div>
-
-          <div className="bg-gray-800 rounded p-2 text-center">
-            <div className="text-gray-400 text-xs">Active</div>
-            <div className="text-white text-sm truncate">{gameState.active_player_username}</div>
-          </div>
-
-          <div className="bg-gray-800 rounded p-2 text-center">
-            <div className="text-gray-400 text-xs mb-1">Card Size</div>
-            <div className="flex items-center justify-center gap-2">
-              <button
-                onClick={() => setCardScale(s => Math.max(50, s - 10))}
-                className="w-6 h-6 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm font-bold"
-              >
-                -
-              </button>
-              <span className="text-white text-sm font-medium w-10">{cardScale}%</span>
-              <button
-                onClick={() => setCardScale(s => Math.min(150, s + 10))}
-                className="w-6 h-6 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm font-bold"
-              >
-                +
-              </button>
-            </div>
-          </div>
-
-          <div className="flex-1" />
-
-          {isCurrentUserActive && currentPlayer && (
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={handleUntapAll}
-                disabled={isLoading}
-                className="flex items-center justify-center gap-1 px-2 py-2 bg-green-600 hover:bg-green-500 text-white rounded transition-colors text-sm disabled:opacity-50"
-              >
-                Untap
-              </button>
-              <button
-                onClick={handleDrawCard}
-                disabled={isLoading}
-                className="flex items-center justify-center gap-1 px-2 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors text-sm disabled:opacity-50"
-              >
-                <ArrowRightIcon className="h-4 w-4" />
-                Draw
-              </button>
-              <button
-                onClick={handlePassPriority}
-                disabled={isLoading}
-                className="flex items-center justify-center gap-1 px-2 py-2 bg-yellow-600 hover:bg-yellow-500 text-white rounded transition-colors text-sm disabled:opacity-50"
-              >
-                Pass Priority
-              </button>
-            </div>
-          )}
-        </div>
+        
+        <GameSideBar
+          gameState={gameState}
+          cardScale={cardScale}
+          isCurrentUserActive={isCurrentUserActive}
+          currentPlayer={currentPlayer}
+          setCardScale={setCardScale}
+          handleDrawCard={handleDrawCard}
+          handleUntapAll={handleUntapAll}
+          handlePassPriority={handlePassPriority}
+          isLoading={isLoading}
+        />
+        
       </div>
     </div>
   );
