@@ -28,7 +28,7 @@ export const Exile: React.FC<{
                 {player.exile.length == 0 && (
                     <div className="w-24 h-36 border-dashed border-2 border-gray-500 rounded"></div>
                 )}
-                {player.exile.slice(0, 3).map((card) => (
+                {player.exile.slice(-1).map((card) => (
                     <Card 
                         key={card.id} 
                         card={card} 

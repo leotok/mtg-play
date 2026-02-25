@@ -6,13 +6,13 @@ export const Library: React.FC<{
     className?: string;
 }> = ({ player, cardScale, className = '' }) => {
     return (
-        <div className={`w-24 h-36 relative overflow-hidden flex flex-col justify-end items-end ${className}`} style={{top: 65}}>
-            <span className="text-xs text-gray-500 uppercase absolute top-0 right-2">
+        <div className={`w-auto h-36 relative flex flex-col justify-end items-end ${className}`} style={{top: 65}}>
+            <span className="text-xs text-gray-500 uppercase absolute -top-5 right-2">
                 Library ({player.library.length})
             </span>
             <div className="flex -mt-8 justify-end">
                 <div 
-                    className="h-36 w-24 rounded-lg overflow-hidden border border-gray-600"
+                    className="h-36 w-auto rounded-lg overflow-hidden border border-gray-600"
                     style={{ transform: `scale(${cardScale / 100})` }}
                 >
                     <img 

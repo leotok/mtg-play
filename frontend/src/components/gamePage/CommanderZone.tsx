@@ -28,7 +28,7 @@ export const CommanderZone: React.FC<{
                 {player.commander.length == 0 && (
                     <div className="w-24 h-36 border-dashed border-2 border-gray-500 rounded"></div>
                 )}
-                {player.commander.map((card) => (
+                {player.commander.slice(0, 1).map((card) => (
                     <Card 
                         key={card.id} 
                         card={card} 

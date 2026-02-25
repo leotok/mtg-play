@@ -28,7 +28,7 @@ export const Graveyard: React.FC<{
                 {player.graveyard.length == 0 && (
                     <div className="w-24 h-36 border-dashed border-2 border-gray-500 rounded"></div>
                 )}
-                {player.graveyard.slice(0, 3).map((card) => (
+                {player.graveyard.slice(-1).map((card) => (
                     <Card 
                         key={card.id} 
                         card={card} 

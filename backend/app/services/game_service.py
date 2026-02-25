@@ -722,6 +722,13 @@ class GameService:
                 detail="This card is not yours"
             )
         
+        # For graveyard and exile, always append to end (LIFO)
+        if target_zone in (CardZone.GRAVEYARD, CardZone.EXILE):
+            existing_cards = self.game_card_repo.get_player_cards_in_zone(
+                player_state.id, target_zone
+            )
+            position = len(existing_cards)
+        
         self.game_card_repo.move_card(card_id, target_zone, position)
         
         return await self.get_game_state(game_id, current_user)
