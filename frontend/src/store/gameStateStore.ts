@@ -146,14 +146,12 @@ export const useGameStateStore = create<GameStateStore>((set) => ({
   },
 
   adjustLife: async (gameId: number, amount: number) => {
-    set({ isLoading: true, error: null });
     try {
       const response = await apiClient.post<GameState>(`/games/${gameId}/adjust-life`, { amount });
-      set({ gameState: response, isLoading: false });
+      set({ gameState: response });
     } catch (err: any) {
       set({ 
-        error: err.response?.data?.detail || 'Failed to adjust life', 
-        isLoading: false 
+        error: err.response?.data?.detail || 'Failed to adjust life'
       });
     }
   },

@@ -3,7 +3,7 @@ import type { PlayerGameState } from "../../types/gameState";
 import { useGameStateStore } from "../../store/gameStateStore";
 
 export const LifeCounter: React.FC<{ player: PlayerGameState }> = ({ player }) => {
-    const { gameId, adjustLife, isLoading } = useGameStateStore();
+    const { gameId, adjustLife } = useGameStateStore();
     const [inputValue, setInputValue] = useState(player.life_total.toString());
     const [isEditing, setIsEditing] = useState(false);
 
@@ -14,7 +14,7 @@ export const LifeCounter: React.FC<{ player: PlayerGameState }> = ({ player }) =
     }, [player.life_total, isEditing]);
 
     const handleAdjustLife = (amount: number) => {
-        if (gameId && !isLoading) {
+        if (gameId) {
             adjustLife(gameId, amount);
         }
     };
@@ -28,7 +28,7 @@ export const LifeCounter: React.FC<{ player: PlayerGameState }> = ({ player }) =
         const newLife = parseInt(inputValue, 10);
         if (!isNaN(newLife) && newLife >= 0 && newLife !== player.life_total) {
             const diff = newLife - player.life_total;
-            if (gameId && !isLoading) {
+            if (gameId) {
                 adjustLife(gameId, diff);
             }
         } else {
