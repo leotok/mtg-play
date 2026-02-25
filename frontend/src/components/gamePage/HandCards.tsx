@@ -32,7 +32,7 @@ export const HandCards: React.FC<{
         return (
             <div 
             ref={handRef as any} 
-            className={`flex justify-center gap-1 p-1 rounded transition-colors ${
+            className={`flex justify-center gap-1 p-1 rounded transition-colors flex-auto ${
                 hoveredZone === 'hand' ? 'bg-yellow-900/50 border-none' : ''
             }`}
             style={{height: handHeight}}
