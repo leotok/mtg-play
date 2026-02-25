@@ -110,3 +110,7 @@ class BattlefieldPositionRequest(BaseModel):
     card_id: int
     x: float
     y: float
+
+
+class AdjustLifeRequest(BaseModel):
+    amount: int

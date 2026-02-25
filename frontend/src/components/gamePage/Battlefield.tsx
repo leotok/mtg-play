@@ -25,7 +25,7 @@ export const Battlefield: React.FC<{
             <h4 className="text-xs text-gray-500 uppercase mb-1">Battlefield ({player.battlefield.length})</h4>
             <div 
                 ref={battlefieldRef}
-                className={`h-[calc(100%-1.5rem)] p-1 bg-green-900/20 border-2 rounded-lg relative select-none transition-colors border-none`}
+                className={`h-[calc(100%-1.5rem)] p-1 border-2 rounded-lg relative select-none transition-colors border-none`}
             >
                 {player.battlefield.map((card) => {
                 const isDraggingThis = dragState?.isDragging && dragState?.cardId === card.id;

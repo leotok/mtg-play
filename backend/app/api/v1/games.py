@@ -18,6 +18,7 @@ from app.schemas.game_state import (
     MoveCardRequest,
     TapCardRequest,
     BattlefieldPositionRequest,
+    AdjustLifeRequest,
 )
 from app.services.game_service import get_game_service, GameService
 from app.socket import get_sio
@@ -345,3 +346,14 @@ async def pass_priority(
 ):
     """Pass priority and advance the game phase"""
     return await game_service.pass_priority(game_id, current_user)
+
+
+@router.post("/{game_id}/adjust-life", response_model=GameStateResponse)
+async def adjust_life(
+    game_id: int,
+    request: AdjustLifeRequest,
+    current_user: User = Depends(get_current_user),
+    game_service: GameService = Depends(get_game_service)
+):
+    """Adjust the current player's life total"""
+    return await game_service.adjust_life(game_id, request.amount, current_user)

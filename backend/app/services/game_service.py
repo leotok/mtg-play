@@ -953,6 +953,44 @@ class GameService:
         
         return await self.get_game_state(game_id, current_user)
     
+    async def adjust_life(
+        self,
+        game_id: int,
+        amount: int,
+        current_user: User
+    ) -> GameStateResponse:
+        game = self._get_game_or_404(game_id)
+        
+        if game.status != GameStatus.IN_PROGRESS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Game is not in progress"
+            )
+        
+        game_state = self.game_state_repo.get_by_game_room_id(game_id)
+        if not game_state:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Game state not found"
+            )
+        
+        player_state = self.player_game_state_repo.get_by_game_state_and_user(
+            game_state.id, current_user.id
+        )
+        if not player_state:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not in this game"
+            )
+        
+        player_state.life_total += amount
+        if player_state.life_total < 0:
+            player_state.life_total = 0
+        
+        self.player_game_state_repo.db.commit()
+        
+        return await self.get_game_state(game_id, current_user)
+    
     async def select_deck(
         self,
         game_id: int,
