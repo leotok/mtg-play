@@ -6,10 +6,10 @@ A web-based platform for playing Magic: The Gathering Commander games online wit
 
 ```
 commander/
-├── backend/          # Python FastAPI backend
-├── frontend/         # React TypeScript frontend (to be initialized)
+├── backend/           # Python FastAPI backend
+├── frontend/          # React TypeScript frontend
 ├── docker-compose.yml # Local development services
-└── commander-roadmap.md # Detailed project roadmap
+└── README.md          # This file
 ```
 
 ## Tech Stack
@@ -23,162 +23,152 @@ commander/
 - **python-socketio** - Real-time communication
 - **Alembic** - Database migrations
 
-### Frontend (Pending Node.js installation)
-- **React 18** with **TypeScript**
+### Frontend
+- **React 19** with **TypeScript**
 - **Vite** - Build tool
 - **React Router** - Routing
 - **Zustand** - State management
 - **Socket.IO Client** - Real-time communication
-- **DnD Kit** - Drag and drop functionality
 
-## Getting Started
+## Prerequisites
 
-### Prerequisites
-- ✅ Python 3.13+ 
-- ✅ uv (Python package manager)
-- ⏳ Docker and Docker Compose (needs installation)
-- ✅ Node.js 18+ and npm
+- Python 3.13+
+- uv (Python package manager)
+- Docker and Docker Compose
+- Node.js 18+ and npm
 
-### Backend Setup
+## Quick Start
 
-1. Navigate to the backend directory:
+### Using Makefile (Recommended)
+
+```bash
+make dev-setup          # Full setup (install deps + migrations)
+make help              # View all available commands
+
+# Or individually:
+make setup             # Install all dependencies
+make migrate           # Run database migrations
+make backend-dev       # Start backend (terminal 1)
+make frontend-dev      # Start frontend (terminal 2)
+```
+
+### Manual Setup
+
+**Start services:**
+- Docker: `docker compose up -d`
+- Or local PostgreSQL + Redis
+
+**Run backend:**
 ```bash
 cd backend
-```
-
-2. Install dependencies (already done with uv):
-```bash
-uv sync
-```
-
-3. Copy environment file:
-```bash
 cp .env.example .env
-```
-
-4. Start local services (PostgreSQL and Redis):
-```bash
-cd ..
-docker-compose up -d
-```
-
-5. Run the FastAPI server:
-```bash
-cd backend
+uv sync
+uv run alembic upgrade head
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-The API will be available at `http://localhost:8000`
-- API docs: `http://localhost:8000/docs`
-- Health check: `http://localhost:8000/health`
-
-### Frontend Setup (Pending)
-
-Node.js needs to be installed before setting up the frontend. 
-
-**Install Node.js:**
-- Option 1: Using nvm (recommended)
-  ```bash
-  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
-  nvm install --lts
-  ```
-- Option 2: Download from [nodejs.org](https://nodejs.org/)
-
-After installing Node.js, the frontend will be initialized with Vite and React.
-
-## Development
-
-### Running Services
-
-Start PostgreSQL and Redis:
+**Run frontend:**
 ```bash
-docker-compose up -d
+cd frontend
+npm install
+npm run dev
 ```
 
-Stop services:
+The application will be available at:
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:8000`
+- API Docs: `http://localhost:8000/docs`
+
+## Creating Users
+
+### Via API
+
 ```bash
-docker-compose down
+curl -X POST http://localhost:8000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "test@example.com",
+    "username": "testuser",
+    "password": "SecurePassword123!"
+  }'
 ```
 
-View logs:
+### Via the UI
+
+Navigate to `http://localhost:5173` and use the registration form.
+
+### Login
+
 ```bash
-docker-compose logs -f
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "test@example.com",
+    "password": "SecurePassword123!"
+  }'
 ```
 
-### Database Migrations (Coming Soon)
+This returns an access token and refresh token.
 
-Once Alembic is configured:
+## Testing
+
+### Backend Tests
+
 ```bash
 cd backend
-uv run alembic upgrade head
+uv run pytest
 ```
 
-## Project Roadmap
+### Frontend Tests
 
-See `commander-roadmap.md` for the complete development roadmap covering:
-- Phase 1: MVP Foundation (3-4 months)
-- Phase 2: Game Complexity (3-4 months)
-- Phase 3: Social & Polish (2-3 months)
-- Phase 4: Advanced Features (Ongoing)
+```bash
+cd frontend
+npm run test      # Watch mode
+npm run test:run  # Single run
+npm run test:ui   # UI mode
+```
 
-## Current Status
+### Database Migrations
 
-✅ Backend structure initialized with FastAPI and uv  
-✅ All Python dependencies installed  
-✅ FastAPI application configured with CORS and settings  
-✅ Database models created (User, Card, Deck, DeckCard)  
-✅ Alembic configured for database migrations  
-✅ Docker Compose configuration for PostgreSQL and Redis  
-✅ Frontend initialized with React + TypeScript + Vite  
-✅ React Router configured for navigation  
-✅ Zustand store set up for state management  
-✅ Socket.IO services created for real-time communication  
-✅ API service with authentication headers  
-⏳ Docker installation (required to run PostgreSQL and Redis)  
-⏳ Running initial database migration  
-⏳ Authentication endpoints  
-⏳ Scryfall API integration  
-⏳ Game engine core
+```bash
+cd backend
 
-## Next Steps
+# Create a new migration
+uv run alembic revision --autogenerate -m "description"
 
-1. **Install Docker Desktop** (required for PostgreSQL and Redis)
-   - Download from [docker.com](https://www.docker.com/products/docker-desktop)
-   - After installation, run: `docker compose up -d`
+# Apply migrations
+uv run alembic upgrade head
 
-2. **Run database migrations**
-   ```bash
-   cd backend
-   uv run alembic upgrade head
-   ```
+# Rollback one migration
+uv run alembic downgrade -1
+```
 
-3. **Start the development servers**
-   - Backend: `cd backend && uv run uvicorn app.main:app --reload`
-   - Frontend: `cd frontend && npm run dev`
+## Roadmap
 
-4. **Implement authentication system**
-   - Create auth endpoints (register, login, logout)
-   - Add JWT token generation and validation
-   - Build login/register pages
+### Phase 1: MVP - Foundation
+- ✅ Project setup with FastAPI, React, Socket.IO
+- ✅ Card system with Scryfall API integration
+- ✅ User authentication and deck management
+- ✅ Basic game engine (turns, phases, zones)
+- ✅ Game lobby
+- [DOING] Game board UI with drag-and-drop
 
-5. **Integrate Scryfall API**
-   - Create service to sync card data
-   - Build card search endpoint
-   - Add card search UI
+### Phase 2: Game Complexity
+- Move validation
+- Mana system
+- Stack system and targeting
+- Complex abilities (keywords, activated/triggered)
+- Commander damage rules
+- AI opponent
 
-6. **Build deck management**
-   - Create deck CRUD endpoints
-   - Build deck builder interface
-   - Add deck validation
+### Phase 3: Polish & Social
+- User profiles and stats
+- Game action logs
+- Game replay
+- Spectator mode
+- Game chat and emotes
 
-7. **Develop game engine**
-   - Implement game state management
-   - Create turn system
-   - Build game board UI
-
-## Contributing
-
-This is a personal/educational project. For commercial use, official licensing from Wizards of the Coast would be required.
+See `commander-roadmap.md` for detailed milestones.
 
 ## License
 
