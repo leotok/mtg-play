@@ -16,15 +16,18 @@ export const CommanderZone: React.FC<{
     return (
         <div 
             ref={commanderRef as any}
-            className={`w-24 h-36 relative overflow-hidden flex flex-col justify-end items-end transition-colors ${className} ${
+            className={`w-auto h-36 relative flex flex-col justify-end items-end transition-colors ${className} ${
                 hoveredZone === 'commander' ? 'bg-yellow-900/50 border-2 border-yellow-400' : ''
             }`}
             style={{top: 65}}
         >
-            <span className="text-xs text-gray-500 uppercase absolute top-0 right-2">
-                Cmd ({player.commander.length})
+            <span className="text-xs text-gray-500 uppercase absolute -top-5 right-2">
+                Commander
             </span>
             <div className="flex -mt-8 justify-end">
+                {player.commander.length == 0 && (
+                    <div className="w-24 h-36 border-dashed border-2 border-gray-500 rounded"></div>
+                )}
                 {player.commander.map((card) => (
                     <Card 
                         key={card.id} 
