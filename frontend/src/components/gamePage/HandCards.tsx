@@ -2,6 +2,7 @@ import { Card } from './Card';
 import { type PlayerGameState } from '../../types/gameState';
 import { type CardZone } from '../../types/gameState';
 import { type GameCard, type GameCardInBattlefield } from '../../types/gameState';
+import { useSettingsStore } from '../../store/settingsStore';
 
 
 export const HandCards: React.FC<{
@@ -9,7 +10,6 @@ export const HandCards: React.FC<{
     isCurrentUser: boolean;
     handRef?: React.RefObject<HTMLDivElement | null> | ((el: HTMLDivElement | null) => void);
     hoveredZone?: CardZone | null;
-    cardScale?: number;
     dragState?: {
         isDragging: boolean;
         cardId: number;
@@ -20,7 +20,9 @@ export const HandCards: React.FC<{
     } | null;
     onMouseDownHand?: (card: GameCard, e: React.MouseEvent) => void;
     onHoverCard?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null, position: { x: number; y: number }) => void;
-}> = ({player, isCurrentUser, handRef, hoveredZone, cardScale = 100, dragState, onMouseDownHand, onHoverCard }) => {
+}> = ({player, isCurrentUser, handRef, hoveredZone, dragState, onMouseDownHand, onHoverCard }) => {
+    const cardHeight = useSettingsStore(state => state.getCardHeight());
+    const handHeight = cardHeight * 0.37;
 
     const handIndexArray = player.hand.map((_, idx) => {
         return (idx - (player.hand.length/2));
@@ -30,9 +32,10 @@ export const HandCards: React.FC<{
         return (
             <div 
             ref={handRef as any} 
-            className={`h-20 flex justify-center gap-1 p-1 rounded transition-colors ${
-                hoveredZone === 'hand' ? 'bg-yellow-900/50 border-2 border-yellow-400' : ''
+            className={`flex justify-center gap-1 p-1 rounded transition-colors ${
+                hoveredZone === 'hand' ? 'bg-yellow-900/50 border-none' : ''
             }`}
+            style={{height: handHeight}}
             >
             {player.hand.map((card, idx) => {
                 const isDraggingThis = dragState?.isDragging && dragState?.cardId === card.id;
@@ -42,7 +45,6 @@ export const HandCards: React.FC<{
                     key={card.id} 
                     card={card} 
                     size="sm"
-                    scale={cardScale}
                     onMouseDown={(e) => onMouseDownHand?.(card, e)}
                     onHover={onHoverCard}
                     handIndex={handIndexArray[idx]}
@@ -54,7 +56,7 @@ export const HandCards: React.FC<{
         )
     }
     return (
-        <div className="flex-shrink-0 h-1 overflow-visible">
+        <div className="flex-shrink-0 overflow-visible">
             <div className="flex justify-center -mt-2" style={{transform: 'translateY(-40%)'}}>
                 {player.hand.map((card, idx) => {
                 const isDraggingThis = dragState?.isDragging && dragState?.cardId === card.id;
@@ -64,7 +66,6 @@ export const HandCards: React.FC<{
                     <Card 
                         card={card} 
                         size="sm"
-                        scale={cardScale}
                         hidden={true}
                         onHover={onHoverCard}
                         handIndex={handIndexArray[idx]}

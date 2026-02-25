@@ -2,18 +2,19 @@ import React from "react";
 import type { GameState, PlayerGameState } from "../../types/gameState";
 import { TURN_PHASE_LABELS } from "../../types/gameState";
 import { ArrowRightIcon } from "@heroicons/react/24/outline";
+import { useSettingsStore } from "../../store/settingsStore";
 
 export const GameSideBar: React.FC<{
     gameState: GameState;
-    cardScale: number;
     isCurrentUserActive: boolean;
     currentPlayer?: PlayerGameState | null;
-    setCardScale: React.Dispatch<React.SetStateAction<number>>;
     handleDrawCard: () => void;
     handleUntapAll: () => void;
     handlePassPriority: () => void;
     isLoading: boolean;
-}> = ({gameState, cardScale, isCurrentUserActive, currentPlayer, setCardScale, handleDrawCard, handleUntapAll, handlePassPriority, isLoading}) => {
+}> = ({gameState, isCurrentUserActive, currentPlayer, handleDrawCard, handleUntapAll, handlePassPriority, isLoading}) => {
+    const { cardScale, setCardScale } = useSettingsStore();
+    
     return (
         
             <div className="w-40 flex-shrink-0 flex flex-col gap-2">
@@ -43,14 +44,14 @@ export const GameSideBar: React.FC<{
                     <div className="text-gray-400 text-xs mb-1">Card Size</div>
                     <div className="flex items-center justify-center gap-2">
                     <button
-                        onClick={() => setCardScale(s => Math.max(50, s - 10))}
+                        onClick={() => setCardScale(Math.max(50, cardScale - 10))}
                         className="w-6 h-6 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm font-bold"
                     >
                         -
                     </button>
                     <span className="text-white text-sm font-medium w-10">{cardScale}%</span>
                     <button
-                        onClick={() => setCardScale(s => Math.min(150, s + 10))}
+                        onClick={() => setCardScale(Math.min(150, cardScale + 10))}
                         className="w-6 h-6 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm font-bold"
                     >
                         +

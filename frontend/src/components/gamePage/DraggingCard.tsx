@@ -11,8 +11,7 @@ export const DraggingCard: React.FC<{
         currentY: number;
     } | null;
     isCurrentUser: boolean;
-    cardScale: number;
-}> = ({ dragState, isCurrentUser, cardScale }) => {
+}> = ({ dragState, isCurrentUser }) => {
     if (dragState && dragState.isDragging && isCurrentUser && dragState.card) {
         return (
                 <div
@@ -22,7 +21,7 @@ export const DraggingCard: React.FC<{
                     top: dragState.currentY - 28,
                   }}
                 >
-                  <Card card={dragState.card} size="sm" scale={cardScale} isDragging />
+                  <Card card={dragState.card} size="sm" isDragging />
                 </div>
         )}
     return null;

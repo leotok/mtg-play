@@ -35,8 +35,7 @@ export const PlayerZone: React.FC<{
     currentY: number;
   } | null;
   hoveredZone?: CardZone | null;
-  cardScale?: number;
-}> = ({ player, isCurrentUser, isActive, onTapCard, onHoverCard, onMouseDownCard, onMouseDownHand, onMouseDownCommander, onMouseDownGraveyard, onMouseDownExile, battlefieldRef, handRef, commanderRef, graveyardRef, exileRef, dragState, hoveredZone, cardScale = 100 }) => {
+}> = ({ player, isCurrentUser, isActive, onTapCard, onHoverCard, onMouseDownCard, onMouseDownHand, onMouseDownCommander, onMouseDownGraveyard, onMouseDownExile, battlefieldRef, handRef, commanderRef, graveyardRef, exileRef, dragState, hoveredZone }) => {
   const backgroundColor = isCurrentUser ? 'darkslateblue' : 'darkslategray';
 
   return (
@@ -48,8 +47,6 @@ export const PlayerZone: React.FC<{
         player={player}
         isCurrentUser={isCurrentUser}
         battlefieldRef={battlefieldRef}
-        hoveredZone={hoveredZone}
-        cardScale={cardScale}
         dragState={dragState}
         onTapCard={onTapCard}
         onMouseDownCard={onMouseDownCard}
@@ -62,7 +59,6 @@ export const PlayerZone: React.FC<{
           isCurrentUser={isCurrentUser}
           handRef={handRef}
           hoveredZone={hoveredZone}
-          cardScale={cardScale}
           dragState={dragState}
           onMouseDownHand={onMouseDownHand}
           onHoverCard={onHoverCard}
@@ -72,7 +68,6 @@ export const PlayerZone: React.FC<{
           <CommanderZone
             player={player}
             commanderRef={commanderRef}
-            cardScale={cardScale}
             hoveredZone={hoveredZone}
             isCurrentUser={isCurrentUser}
             onMouseDownCommander={onMouseDownCommander}
@@ -81,7 +76,6 @@ export const PlayerZone: React.FC<{
 
           <Graveyard
             player={player}
-            cardScale={cardScale}
             graveyardRef={graveyardRef}
             hoveredZone={hoveredZone}
             isCurrentUser={isCurrentUser}
@@ -96,14 +90,13 @@ export const PlayerZone: React.FC<{
             isCurrentUser={isCurrentUser}
             onMouseDownExile={onMouseDownExile}
             onHoverCard={onHoverCard}
-            cardScale={cardScale}
           />
 
-          <Library player={player} cardScale={cardScale} />
+          <Library player={player} />
         </div>
       </div>
 
-      <DraggingCard dragState={dragState} isCurrentUser={isCurrentUser} cardScale={cardScale} />
+      <DraggingCard dragState={dragState} isCurrentUser={isCurrentUser} />
   
     </div>
   );

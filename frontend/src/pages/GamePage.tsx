@@ -43,8 +43,6 @@ const GamePage: React.FC = () => {
 
   const [hoveredZone, setHoveredZone] = useState<CardZone | null>(null);
 
-  const [cardScale, setCardScale] = useState(100);
-
   const battlefieldRef = React.useRef<HTMLDivElement>(null);
   const handRef = React.useRef<HTMLDivElement>(null);
   const commanderRef = React.useRef<HTMLDivElement>(null);
@@ -381,7 +379,6 @@ const GamePage: React.FC = () => {
                   exileRef={isCurrentUserPlayer ? (el: any) => { exileRef.current = el; } : undefined}
                   dragState={isCurrentUserPlayer ? dragState : null}
                   hoveredZone={isCurrentUserPlayer ? hoveredZone : null}
-                  cardScale={cardScale}
                 />
               );
             })}
@@ -389,10 +386,8 @@ const GamePage: React.FC = () => {
         
         <GameSideBar
           gameState={gameState}
-          cardScale={cardScale}
           isCurrentUserActive={isCurrentUserActive}
           currentPlayer={currentPlayer}
-          setCardScale={setCardScale}
           handleDrawCard={handleDrawCard}
           handleUntapAll={handleUntapAll}
           handlePassPriority={handlePassPriority}
