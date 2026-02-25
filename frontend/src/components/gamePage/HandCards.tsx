@@ -22,7 +22,8 @@ export const HandCards: React.FC<{
     onHoverCard?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null, position: { x: number; y: number }) => void;
 }> = ({player, isCurrentUser, handRef, hoveredZone, dragState, onMouseDownHand, onHoverCard }) => {
     const cardHeight = useSettingsStore(state => state.getCardHeight());
-    const handHeight = cardHeight * 0.37;
+    const handHeight = cardHeight * 0.7;
+    const opponentHandHeight = cardHeight * 0.45;
 
     const handIndexArray = player.hand.map((_, idx) => {
         return (idx - (player.hand.length/2));
@@ -56,8 +57,8 @@ export const HandCards: React.FC<{
         )
     }
     return (
-        <div className="flex-shrink-0 overflow-visible">
-            <div className="flex justify-center -mt-2" style={{transform: 'translateY(-40%)'}}>
+        <div className="overflow-hidden flex-auto">
+            <div className="flex justify-center gap-1 p-1 rounded transition-colors" style={{height: opponentHandHeight}}>
                 {player.hand.map((card, idx) => {
                 const isDraggingThis = dragState?.isDragging && dragState?.cardId === card.id;
                 if (isDraggingThis) return null;
