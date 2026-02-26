@@ -365,7 +365,7 @@ const GamePage: React.FC = () => {
       {/* Game Board */}
       
       <div className="w-full h-full flex">
-        <div className="flex-1 flex flex-col min-h-0 pr-2">
+        <div className="max-w-[90%] flex-1 flex flex-col min-h-0 pr-2">
 
           {/* Player Zones */}
 
