@@ -55,7 +55,7 @@ export const PlayerZone: React.FC<{
         onHoverCard={onHoverCard}
       />
 
-      <div className="h-auto flex gap-2 items-end">
+      <div className="h-auto flex gap-2 items-end w-full min-w-0">
         <HandCards
           player={player}
           isCurrentUser={isCurrentUser}

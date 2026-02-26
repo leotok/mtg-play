@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { type GameCard } from '../../types/gameState';
 import { useSettingsStore } from '../../store/settingsStore';
 import { CARD_SIZES, type CardSizeKey } from '../../config';
@@ -15,10 +15,14 @@ export const Card: React.FC<{
   scale?: number;
   handIndex?: number;
   zIndex?: number;
-}> = ({ card, onTap, onMouseDown, onHover, size, hidden = false, isDragging = false, style, scale, handIndex = 0, zIndex = 0 }) => {
+  horizontalOffset?: number;
+  inHand?: boolean;
+}> = ({ card, onTap, onMouseDown, onHover, size, hidden = false, isDragging = false, style, scale, handIndex = 0, zIndex = 0, horizontalOffset = -40, inHand = false }) => {
   const { baseCardSize, cardScale } = useSettingsStore();
   const cardHeight = CARD_SIZES[size || baseCardSize].height * (cardScale / 100);
   const cardWidth = CARD_SIZES[size || baseCardSize].width * (cardScale / 100);
+
+  const [isHovered, setIsHovered] = useState(false);
 
   const imageUrl = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal;
   const cardName = hidden ? 'Unknown Card' : card.card_name;
@@ -27,6 +31,7 @@ export const Card: React.FC<{
     if (!hidden && onHover) {
       onHover(card, { x: e.clientX, y: e.clientY });
     }
+    setIsHovered(true);
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -52,15 +57,18 @@ export const Card: React.FC<{
     if (onHover) {
       onHover(null, { x: 0, y: 0 });
     }
+    setIsHovered(false);
   };
 
-  const left = handIndex * -40;
+  const left = handIndex * horizontalOffset;
   const top = Math.abs(handIndex * 8 );
 
   const rotation = card.is_tapped ? 90 : (handIndex * 4);
+  const hoverScale = isHovered && inHand ? 1.05 : 1;
   const scaleTransform = scale !== undefined && scale !== 100 ? `scale(${scale / 100})` : '';
+  const hoverScaleTransform = isHovered ? `scale(${hoverScale})` : '';
   const rotationTransform = rotation !== 0 ? `rotate(${rotation}deg)` : '';
-  const combinedTransform = [scaleTransform, rotationTransform].filter(Boolean).join(' ');
+  const combinedTransform = [scaleTransform, hoverScaleTransform, rotationTransform].filter(Boolean).join(' ');
   const scaleStyle = combinedTransform ? { ...style, transform: combinedTransform } : style;
 
   return (
