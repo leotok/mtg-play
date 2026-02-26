@@ -1,8 +1,10 @@
+import { useState, useEffect, useRef } from 'react';
 import { Card } from './Card';
 import { type PlayerGameState } from '../../types/gameState';
 import { type CardZone } from '../../types/gameState';
 import { type GameCard, type GameCardInBattlefield } from '../../types/gameState';
 import { useSettingsStore } from '../../store/settingsStore';
+import { CARD_SIZES } from '../../config';
 
 
 export const HandCards: React.FC<{
@@ -24,8 +26,17 @@ export const HandCards: React.FC<{
     onHoverCard?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null, position: { x: number; y: number }) => void;
 }> = ({player, isCurrentUser, handRef, hoveredZone, dragState, onMouseDownHand, onHoverCard }) => {
     const cardHeight = useSettingsStore(state => state.getCardHeight());
+    const cardScale = useSettingsStore(state => state.cardScale);
     const handHeight = cardHeight * 0.7;
     const opponentHandHeight = cardHeight * 0.45;
+
+    const opponentContainerRef = useRef<HTMLDivElement>(null);
+    
+    
+    const cardWidth = CARD_SIZES.sm.width * (cardScale / 100);
+    const handCardCount = player.hand.length;
+    const minVisibleRatio = 0.30;
+
 
     const handIndexArray = player.hand.map((_, idx) => {
         return (idx - (player.hand.length/2));
@@ -34,11 +45,12 @@ export const HandCards: React.FC<{
     if (isCurrentUser) {
         return (
             <div 
-            ref={handRef as any} 
-            className={`flex justify-center gap-1 p-1 rounded transition-colors flex-auto ${
-                hoveredZone === 'hand' ? 'bg-yellow-900/50 border-none' : ''
-            }`}
-            style={{height: handHeight}}
+                className={`flex justify-center gap-1 p-1 rounded transition-colors overflow-hidden flex-auto max-w-[58%] ${
+                    hoveredZone === 'hand' ? 'bg-yellow-900/50 border-none' : ''
+                }`}
+
+                ref={handRef} 
+                style={{height: handHeight}}
             >
             {player.hand.map((card, idx) => {
                 const isDraggingThis = dragState?.isDragging && dragState?.cardId === card.id;
@@ -52,6 +64,7 @@ export const HandCards: React.FC<{
                     onHover={onHoverCard}
                     handIndex={handIndexArray[idx]}
                     zIndex={idx}
+                    inHand={true}
                 />
                 );
             })}
@@ -59,22 +72,26 @@ export const HandCards: React.FC<{
         )
     }
     return (
-        <div className="overflow-hidden flex-auto">
-            <div className="flex justify-center gap-1 p-1 rounded transition-colors" style={{height: opponentHandHeight}}>
+        <div className="overflow-hidden flex-auto max-w-[58%]">
+            <div 
+                ref={opponentContainerRef}
+                className="flex justify-center gap-1 p-1 rounded transition-colors" 
+                style={{height: opponentHandHeight}}
+            >
                 {player.hand.map((card, idx) => {
                 const isDraggingThis = dragState?.isDragging && dragState?.cardId === card.id;
                 if (isDraggingThis) return null;
                 return (
-                    <div key={card.id} className="-ml-4 first:ml-0">
                     <Card 
+                        key={card.id} 
                         card={card} 
                         size="sm"
                         hidden={true}
                         onHover={onHoverCard}
                         handIndex={handIndexArray[idx]}
                         zIndex={idx}
+                        inHand={true}
                     />
-                    </div>
                 );
                 })}
             </div>

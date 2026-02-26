@@ -79,7 +79,7 @@ export const Card: React.FC<{
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       className={`
-        flex items-center justify-center select-none 
+        flex items-center justify-center select-none min-w-fit
         transition-all duration-200
         ${isDragging ? 'z-50' : ''}
         ${hidden ? 'display-none' : ''}
