@@ -9,6 +9,8 @@ export const DraggingCard: React.FC<{
         card: GameCard | GameCardInBattlefield | null;
         currentX: number;
         currentY: number;
+        cardPosition: { x: number; y: number };
+        mouseOffset: { x: number; y: number };
     } | null;
     isCurrentUser: boolean;
 }> = ({ dragState, isCurrentUser }) => {
@@ -17,8 +19,8 @@ export const DraggingCard: React.FC<{
                 <div
                   className="fixed pointer-events-none z-50"
                   style={{
-                    left: dragState.currentX - 20,
-                    top: dragState.currentY - 28,
+                    left: dragState.currentX - dragState.mouseOffset.x,
+                    top: dragState.currentY - dragState.mouseOffset.y,
                   }}
                 >
                   <Card card={dragState.card} size="sm" isDragging />

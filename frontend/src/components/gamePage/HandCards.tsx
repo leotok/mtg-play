@@ -17,6 +17,8 @@ export const HandCards: React.FC<{
         card: GameCard | GameCardInBattlefield | null;
         currentX: number;
         currentY: number;
+        cardPosition: { x: number; y: number };
+        mouseOffset: { x: number; y: number };
     } | null;
     onMouseDownHand?: (card: GameCard, e: React.MouseEvent) => void;
     onHoverCard?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null, position: { x: number; y: number }) => void;

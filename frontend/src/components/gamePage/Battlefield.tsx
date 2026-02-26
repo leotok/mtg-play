@@ -14,6 +14,8 @@ export const Battlefield: React.FC<{
         card: GameCard | GameCardInBattlefield | null;
         currentX: number;
         currentY: number;
+        cardPosition: { x: number; y: number };
+        mouseOffset: { x: number; y: number };
     } | null;
     onTapCard?: (cardId: number) => void;
     onMouseDownCard?: (card: GameCard | GameCardInBattlefield, e: React.MouseEvent) => void;

@@ -39,6 +39,8 @@ const GamePage: React.FC = () => {
     card: GameCard | GameCardInBattlefield | null;
     currentX: number;
     currentY: number;
+    cardPosition: { x: number; y: number };
+    mouseOffset: { x: number; y: number };
   } | null>(null);
 
   const [hoveredZone, setHoveredZone] = useState<CardZone | null>(null);
@@ -109,6 +111,8 @@ const GamePage: React.FC = () => {
   const handleMouseDownBattlefield = (card: GameCardInBattlefield, e: React.MouseEvent) => {
     if (!battlefieldRef.current) return;
     
+    const rect = e.currentTarget.getBoundingClientRect();
+    
     setDragState({
       isDragging: true,
       cardId: card.id,
@@ -116,10 +120,13 @@ const GamePage: React.FC = () => {
       card,
       currentX: e.clientX,
       currentY: e.clientY,
+      cardPosition: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 },
+      mouseOffset: { x: e.clientX - rect.left, y: e.clientY - rect.top },
     });
   };
 
   const handleMouseDownHand = (card: GameCard, e: React.MouseEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect();
     setDragState({
       isDragging: true,
       cardId: card.id,
@@ -127,10 +134,13 @@ const GamePage: React.FC = () => {
       card,
       currentX: e.clientX,
       currentY: e.clientY,
+      cardPosition: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 },
+      mouseOffset: { x: e.clientX - rect.left, y: e.clientY - rect.top },
     });
   };
 
   const handleMouseDownCommander = (card: GameCard, e: React.MouseEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect();
     setDragState({
       isDragging: true,
       cardId: card.id,
@@ -138,10 +148,13 @@ const GamePage: React.FC = () => {
       card,
       currentX: e.clientX,
       currentY: e.clientY,
+      cardPosition: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 },
+      mouseOffset: { x: e.clientX - rect.left, y: e.clientY - rect.top },
     });
   };
 
   const handleMouseDownGraveyard = (card: GameCard, e: React.MouseEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect();
     setDragState({
       isDragging: true,
       cardId: card.id,
@@ -149,10 +162,13 @@ const GamePage: React.FC = () => {
       card,
       currentX: e.clientX,
       currentY: e.clientY,
+      cardPosition: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 },
+      mouseOffset: { x: e.clientX - rect.left, y: e.clientY - rect.top },
     });
   };
 
   const handleMouseDownExile = (card: GameCard, e: React.MouseEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect();
     setDragState({
       isDragging: true,
       cardId: card.id,
@@ -160,6 +176,8 @@ const GamePage: React.FC = () => {
       card,
       currentX: e.clientX,
       currentY: e.clientY,
+      cardPosition: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 },
+      mouseOffset: { x: e.clientX - rect.left, y: e.clientY - rect.top },
     });
   };
 
@@ -228,16 +246,16 @@ const GamePage: React.FC = () => {
 
         if (isInsideBf) {
           if (dragState.sourceZone === 'hand' || dragState.sourceZone === 'commander') {
-            const localX = x - bfRect.left - 32;
-            const localY = y - bfRect.top - 48;
+            const localX = x - bfRect.left - dragState.mouseOffset.x;
+            const localY = y - bfRect.top - dragState.mouseOffset.y;
             setDragState(null);
             await playCard(gameIdNum, dragState.cardId, localX, localY);
             return;
           }
 
           if (dragState.sourceZone === 'battlefield') {
-            const localX = x - bfRect.left;
-            const localY = y - bfRect.top;
+            const localX = x - bfRect.left - dragState.mouseOffset.x;
+            const localY = y - bfRect.top - dragState.mouseOffset.y;
             const isValidPosition = localX >= 0 && localX <= bfRect.width - 64 && localY >= 0 && localY <= bfRect.height - 96;
 
             if (isValidPosition) {
@@ -249,8 +267,8 @@ const GamePage: React.FC = () => {
 
           // Handle cards from graveyard, exile, etc. to battlefield
           if (dragState.sourceZone === 'graveyard' || dragState.sourceZone === 'exile') {
-            const localX = x - bfRect.left - 32;
-            const localY = y - bfRect.top - 48;
+            const localX = x - bfRect.left - dragState.mouseOffset.x;
+            const localY = y - bfRect.top - dragState.mouseOffset.y;
             setDragState(null);
             await moveCard(gameIdNum, dragState.cardId, 'battlefield', 0);
             // Position will be set at a default location; precise placement would require additional logic

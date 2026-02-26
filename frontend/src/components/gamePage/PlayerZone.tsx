@@ -33,6 +33,8 @@ export const PlayerZone: React.FC<{
     card: GameCard | GameCardInBattlefield | null;
     currentX: number;
     currentY: number;
+    cardPosition: { x: number; y: number };
+    mouseOffset: { x: number; y: number };
   } | null;
   hoveredZone?: CardZone | null;
 }> = ({ player, isCurrentUser, isActive, onTapCard, onHoverCard, onMouseDownCard, onMouseDownHand, onMouseDownCommander, onMouseDownGraveyard, onMouseDownExile, battlefieldRef, handRef, commanderRef, graveyardRef, exileRef, dragState, hoveredZone }) => {
@@ -53,7 +55,7 @@ export const PlayerZone: React.FC<{
         onHoverCard={onHoverCard}
       />
 
-      <div className="h-[5%] flex gap-2 items-end">
+      <div className="h-auto flex gap-2 items-end">
         <HandCards
           player={player}
           isCurrentUser={isCurrentUser}

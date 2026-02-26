@@ -71,13 +71,12 @@ export const Card: React.FC<{
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       className={`
-        flex items-center justify-center cursor-grab select-none
+        flex items-center justify-center select-none 
         transition-all duration-200
-        ${isDragging ? 'opacity-80 scale-105 cursor-grabbing z-50' : 'hover:scale-105 hover:border-yellow-500'}
-        ${hidden ? 'bg-gray-900 border-dashed' : ''}
+        ${isDragging ? 'z-50' : ''}
+        ${hidden ? 'display-none' : ''}
       `}
       style={{...scaleStyle, zIndex, position: 'relative', left, top, width: cardWidth, height: cardHeight}}
-      title={hidden ? cardName : `${cardName}\n${card.mana_cost || ''}\n${card.type_line || ''}`}
     >
       {hidden ? (
         <img 
