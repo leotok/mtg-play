@@ -248,8 +248,8 @@ const GamePage: React.FC = () => {
           if (dragState.sourceZone === 'hand' || dragState.sourceZone === 'commander') {
             const localX = x - bfRect.left - dragState.mouseOffset.x;
             const localY = y - bfRect.top - dragState.mouseOffset.y;
-            setDragState(null);
             await playCard(gameIdNum, dragState.cardId, localX, localY);
+            setDragState(null);
             return;
           }
 
@@ -269,9 +269,9 @@ const GamePage: React.FC = () => {
           if (dragState.sourceZone === 'graveyard' || dragState.sourceZone === 'exile') {
             const localX = x - bfRect.left - dragState.mouseOffset.x;
             const localY = y - bfRect.top - dragState.mouseOffset.y;
-            setDragState(null);
             await moveCard(gameIdNum, dragState.cardId, 'battlefield', 0);
-            // Position will be set at a default location; precise placement would require additional logic
+            await updateBattlefieldPosition(gameIdNum, dragState.cardId, localX, localY);
+            setDragState(null);
             return;
           }
         }
@@ -279,23 +279,23 @@ const GamePage: React.FC = () => {
 
       // Check other zones (snap to position)
       if (isCurrentUser && isOverElement(x, y, handRef)) {
-        setDragState(null);
         await moveCard(gameIdNum, dragState.cardId, 'hand', 0);
+        setDragState(null);
         return;
       }
       if (isCurrentUser && isOverElement(x, y, commanderRef)) {
-        setDragState(null);
         await moveCard(gameIdNum, dragState.cardId, 'commander', 0);
+        setDragState(null);
         return;
       }
       if (isCurrentUser && isOverElement(x, y, graveyardRef)) {
-        setDragState(null);
         await moveCard(gameIdNum, dragState.cardId, 'graveyard', 0);
+        setDragState(null);
         return;
       }
       if (isCurrentUser && isOverElement(x, y, exileRef)) {
-        setDragState(null);
         await moveCard(gameIdNum, dragState.cardId, 'exile', 0);
+        setDragState(null);
         return;
       }
 
