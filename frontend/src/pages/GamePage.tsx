@@ -259,8 +259,8 @@ const GamePage: React.FC = () => {
             const isValidPosition = localX >= 0 && localX <= bfRect.width - 64 && localY >= 0 && localY <= bfRect.height - 96;
 
             if (isValidPosition) {
-              setDragState(null);
               await updateBattlefieldPosition(gameIdNum, dragState.cardId, localX, localY);
+              setDragState(null);
               return;
             }
           }
