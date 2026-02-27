@@ -16,6 +16,7 @@ from app.schemas.game_state import (
     DrawCardRequest,
     PlayCardRequest,
     MoveCardRequest,
+    MoveCardsRequest,
     TapCardRequest,
     BattlefieldPositionRequest,
     AdjustLifeRequest,
@@ -296,6 +297,21 @@ async def move_card(
         request.card_id,
         request.target_zone,
         request.position,
+        current_user
+    )
+
+
+@router.post("/{game_id}/move-cards", response_model=GameStateResponse)
+async def move_cards(
+    game_id: int,
+    request: MoveCardsRequest,
+    current_user: User = Depends(get_current_user),
+    game_service: GameService = Depends(get_game_service)
+):
+    """Move multiple cards between zones"""
+    return await game_service.move_cards(
+        game_id,
+        request.cards,
         current_user
     )
 

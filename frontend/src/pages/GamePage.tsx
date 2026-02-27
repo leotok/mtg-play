@@ -26,6 +26,7 @@ const GamePage: React.FC = () => {
     updateBattlefieldPosition,
     passPriority,
     moveCard,
+    moveCards,
   } = useGameStateStore();
 
   const [hoveredCard, setHoveredCard] = useState<GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null>(null);
@@ -442,22 +443,62 @@ const GamePage: React.FC = () => {
 
       // Check other zones (snap to position)
       if (isCurrentUser && isOverElement(x, y, handRef)) {
-        await moveCard(gameIdNum, dragState.cardId, 'hand', 0);
+        if (dragState.sourceZone === 'battlefield' && selectedCardIds.size > 1) {
+          const moves = Array.from(selectedCardIds).map(cardId => ({
+            card_id: cardId,
+            target_zone: 'hand',
+            position: 0
+          }));
+          await moveCards(gameIdNum, moves);
+          setSelectedCardIds(new Set());
+        } else {
+          await moveCard(gameIdNum, dragState.cardId, 'hand', 0);
+        }
         setDragState(null);
         return;
       }
       if (isCurrentUser && isOverElement(x, y, commanderRef)) {
-        await moveCard(gameIdNum, dragState.cardId, 'commander', 0);
+        if (dragState.sourceZone === 'battlefield' && selectedCardIds.size > 1) {
+          const moves = Array.from(selectedCardIds).map(cardId => ({
+            card_id: cardId,
+            target_zone: 'commander',
+            position: 0
+          }));
+          await moveCards(gameIdNum, moves);
+          setSelectedCardIds(new Set());
+        } else {
+          await moveCard(gameIdNum, dragState.cardId, 'commander', 0);
+        }
         setDragState(null);
         return;
       }
       if (isCurrentUser && isOverElement(x, y, graveyardRef)) {
-        await moveCard(gameIdNum, dragState.cardId, 'graveyard', 0);
+        if (dragState.sourceZone === 'battlefield' && selectedCardIds.size > 1) {
+          const moves = Array.from(selectedCardIds).map(cardId => ({
+            card_id: cardId,
+            target_zone: 'graveyard',
+            position: 0
+          }));
+          await moveCards(gameIdNum, moves);
+          setSelectedCardIds(new Set());
+        } else {
+          await moveCard(gameIdNum, dragState.cardId, 'graveyard', 0);
+        }
         setDragState(null);
         return;
       }
       if (isCurrentUser && isOverElement(x, y, exileRef)) {
-        await moveCard(gameIdNum, dragState.cardId, 'exile', 0);
+        if (dragState.sourceZone === 'battlefield' && selectedCardIds.size > 1) {
+          const moves = Array.from(selectedCardIds).map(cardId => ({
+            card_id: cardId,
+            target_zone: 'exile',
+            position: 0
+          }));
+          await moveCards(gameIdNum, moves);
+          setSelectedCardIds(new Set());
+        } else {
+          await moveCard(gameIdNum, dragState.cardId, 'exile', 0);
+        }
         setDragState(null);
         return;
       }
@@ -472,7 +513,7 @@ const GamePage: React.FC = () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [dragState, gameId, isCurrentUser]);
+  }, [dragState, gameId, isCurrentUser, selectedCardIds]);
 
   if (isLoading && !gameState) {
     return (

@@ -103,6 +103,10 @@ class MoveCardRequest(BaseModel):
     position: int = 0
 
 
+class MoveCardsRequest(BaseModel):
+    cards: List[MoveCardRequest]
+
+
 class TapCardRequest(BaseModel):
     card_id: int
 

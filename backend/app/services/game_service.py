@@ -744,6 +744,63 @@ class GameService:
         
         return await self.get_game_state(game_id, current_user)
     
+    async def move_cards(
+        self,
+        game_id: int,
+        cards: list,
+        current_user: User
+    ) -> GameStateResponse:
+        game = self._get_game_or_404(game_id)
+        
+        if game.status != GameStatus.IN_PROGRESS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Game is not in progress"
+            )
+        
+        game_state = self.game_state_repo.get_by_game_room_id(game_id)
+        if not game_state:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Game state not found"
+            )
+        
+        player_state = self.player_game_state_repo.get_by_game_state_and_user(
+            game_state.id, current_user.id
+        )
+        if not player_state:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not in this game"
+            )
+        
+        for card_move in cards:
+            card_id = card_move.card_id
+            target_zone = card_move.target_zone
+            position = card_move.position
+            
+            card = self.game_card_repo.get_card_by_id(card_id)
+            if not card:
+                continue
+            
+            if card.player_game_state_id != player_state.id:
+                continue
+            
+            if target_zone in (CardZone.GRAVEYARD, CardZone.EXILE, CardZone.BATTLEFIELD):
+                existing_cards = self.game_card_repo.get_player_cards_in_zone(
+                    player_state.id, target_zone
+                )
+                position = len(existing_cards)
+            
+            if card.zone == CardZone.BATTLEFIELD and target_zone != CardZone.BATTLEFIELD:
+                if card.is_tapped:
+                    card.is_tapped = False
+                    self.game_card_repo.db.commit()
+            
+            self.game_card_repo.move_card(card_id, target_zone, position)
+        
+        return await self.get_game_state(game_id, current_user)
+    
     async def tap_card(
         self,
         game_id: int,
