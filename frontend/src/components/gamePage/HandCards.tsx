@@ -35,7 +35,13 @@ export const HandCards: React.FC<{
     
     const cardWidth = CARD_SIZES.sm.width * (cardScale / 100);
     const handCardCount = player.hand.length;
-    const minVisibleRatio = 0.30;
+    const minOffset = 10;
+    const maxOffset = 50;
+    const maxHandWidth = 500;
+
+    const availableWidthPerCard = maxHandWidth / handCardCount
+    const cardOffset = Math.min(maxOffset, Math.max(minOffset, availableWidthPerCard));
+    console.log('cardOffset', isCurrentUser, cardOffset);
 
 
     const handIndexArray = player.hand.map((_, idx) => {
@@ -65,6 +71,7 @@ export const HandCards: React.FC<{
                     handIndex={handIndexArray[idx]}
                     zIndex={idx}
                     inHand={true}
+                    horizontalOffset={-cardOffset}
                 />
                 );
             })}
