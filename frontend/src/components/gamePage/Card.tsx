@@ -13,11 +13,11 @@ export const Card: React.FC<{
   isDragging?: boolean;
   style?: React.CSSProperties;
   scale?: number;
-  handIndex?: number;
-  zIndex?: number;
+  handIndex?: number; // Position in hand for angles (e.g., -2, -1, 0, 1, 2)
+  idx?: number; // Index in hand array for z-index (e.g., 0, 1, 2, 3, 4)
   horizontalOffset?: number;
   inHand?: boolean;
-}> = ({ card, onTap, onMouseDown, onHover, size, hidden = false, isDragging = false, style, scale, handIndex = 0, zIndex = 0, horizontalOffset = -40, inHand = false }) => {
+}> = ({ card, onTap, onMouseDown, onHover, size, hidden = false, isDragging = false, style, scale, handIndex = 0, idx = 0, horizontalOffset = -40, inHand = false }) => {
   const { baseCardSize, cardScale } = useSettingsStore();
   const cardHeight = CARD_SIZES[size || baseCardSize].height * (cardScale / 100);
   const cardWidth = CARD_SIZES[size || baseCardSize].width * (cardScale / 100);
@@ -84,7 +84,7 @@ export const Card: React.FC<{
         ${isDragging ? 'z-50' : ''}
         ${hidden ? 'display-none' : ''}
       `}
-      style={{...scaleStyle, zIndex, position: 'relative', left, top, width: cardWidth, height: cardHeight}}
+      style={{...scaleStyle, zIndex: idx, position: 'relative', left, top, width: cardWidth, height: cardHeight}}
     >
       {hidden ? (
         <img 

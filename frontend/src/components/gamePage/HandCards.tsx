@@ -35,12 +35,12 @@ export const HandCards: React.FC<{
     
     const cardWidth = CARD_SIZES.sm.width * (cardScale / 100);
     const handCardCount = player.hand.length;
-    const minOffset = 10;
+    const minOffset = 20;
     const maxOffset = 50;
-    const maxHandWidth = 500;
+    const maxHandWidth = 300;
 
     const availableWidthPerCard = maxHandWidth / handCardCount
-    const cardOffset = Math.min(maxOffset, Math.max(minOffset, availableWidthPerCard));
+    const cardOffset = cardWidth - Math.min(maxOffset, Math.max(minOffset, availableWidthPerCard));
     console.log('cardOffset', isCurrentUser, cardOffset);
 
 
@@ -69,7 +69,7 @@ export const HandCards: React.FC<{
                     onMouseDown={(e) => onMouseDownHand?.(card, e)}
                     onHover={onHoverCard}
                     handIndex={handIndexArray[idx]}
-                    zIndex={idx}
+                    idx={idx}
                     inHand={true}
                     horizontalOffset={-cardOffset}
                 />
