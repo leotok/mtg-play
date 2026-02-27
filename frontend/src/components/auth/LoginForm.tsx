@@ -21,12 +21,9 @@ const LoginForm: React.FC = () => {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    console.log('Login form submitted:', data);
     try {
       clearError();
-      console.log('Calling login function...');
       await login(data.email, data.password);
-      console.log('Login successful, navigating to /playground');
       navigate('/playground');
     } catch (error) {
       console.error('Login failed:', error);

@@ -86,12 +86,10 @@ class ApiClient {
 
   // Public methods
   public async login(email: string, password: string): Promise<Token> {
-    console.log('ApiClient: Making login request to /login');
     const response = await this.client.post<Token>('/login', {
       email,
       password,
     });
-    console.log('ApiClient: Login response received');
     this.setTokens(response.data);
     return response.data;
   }

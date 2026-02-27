@@ -140,8 +140,7 @@ export const ColorBadge: React.FC<ColorBadgeProps> = ({ colors, className = '' }
   }
   
   const gradient = SHARD_GRADIENTS[groupName];
-  
-  console.log('ColorBadge - colors:', colors, 'uniqueColors:', uniqueColors, 'sortedColors:', sortedColors, 'groupName:', groupName, 'gradient:', gradient);
+
   return (
     <span className={`px-2 py-1 bg-gradient-to-r ${gradient || 'from-purple-500 to-blue-500'} text-white rounded-full text-xs font-semibold ${className}`}>
       {groupName}

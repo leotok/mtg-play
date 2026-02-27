@@ -33,8 +33,11 @@ export const PlayerZone: React.FC<{
     card: GameCard | GameCardInBattlefield | null;
     currentX: number;
     currentY: number;
+    initialMouseX: number;
+    initialMouseY: number;
     cardPosition: { x: number; y: number };
     mouseOffset: { x: number; y: number };
+    originalLogicalPosition?: { x: number; y: number };
   } | null;
   hoveredZone?: CardZone | null;
 }> = ({ player, isCurrentUser, isActive, onTapCard, onHoverCard, onMouseDownCard, onMouseDownHand, onMouseDownCommander, onMouseDownGraveyard, onMouseDownExile, battlefieldRef, handRef, commanderRef, graveyardRef, exileRef, dragState, hoveredZone }) => {
@@ -101,7 +104,7 @@ export const PlayerZone: React.FC<{
         </div>
       </div>
 
-      <DraggingCard dragState={dragState} isCurrentUser={isCurrentUser} />
+      <DraggingCard dragState={dragState} isCurrentUser={isCurrentUser} battlefieldRef={battlefieldRef} />
   
     </div>
   );

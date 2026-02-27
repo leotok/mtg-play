@@ -7,6 +7,7 @@ import { type GameCard, type CardZone, type GameCardInBattlefield } from '../typ
 import { CardPreview } from '../components/gamePage/CardPreview';
 import { PlayerZone } from '../components/gamePage/PlayerZone';
 import { GameSideBar } from '../components/gamePage/GameSideBar';
+import { CARD_SIZES } from '../config';
 
 
 const GamePage: React.FC = () => {
@@ -40,8 +41,11 @@ const GamePage: React.FC = () => {
     card: GameCard | GameCardInBattlefield | null;
     currentX: number;
     currentY: number;
+    initialMouseX: number;
+    initialMouseY: number;
     cardPosition: { x: number; y: number };
     mouseOffset: { x: number; y: number };
+    originalLogicalPosition?: { x: number; y: number };
   } | null>(null);
 
   const [hoveredZone, setHoveredZone] = useState<CardZone | null>(null);
@@ -122,8 +126,11 @@ const GamePage: React.FC = () => {
       card,
       currentX: e.clientX,
       currentY: e.clientY,
+      initialMouseX: e.clientX,
+      initialMouseY: e.clientY,
       cardPosition: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 },
       mouseOffset: { x: e.clientX - rect.left, y: e.clientY - rect.top },
+      originalLogicalPosition: { x: card.battlefield_x || 0, y: card.battlefield_y || 0 },
     });
   };
 
@@ -137,6 +144,8 @@ const GamePage: React.FC = () => {
       card,
       currentX: e.clientX,
       currentY: e.clientY,
+      initialMouseX: e.clientX,
+      initialMouseY: e.clientY,
       cardPosition: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 },
       mouseOffset: { x: e.clientX - rect.left, y: e.clientY - rect.top },
     });
@@ -152,6 +161,8 @@ const GamePage: React.FC = () => {
       card,
       currentX: e.clientX,
       currentY: e.clientY,
+      initialMouseX: e.clientX,
+      initialMouseY: e.clientY,
       cardPosition: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 },
       mouseOffset: { x: e.clientX - rect.left, y: e.clientY - rect.top },
     });
@@ -167,6 +178,8 @@ const GamePage: React.FC = () => {
       card,
       currentX: e.clientX,
       currentY: e.clientY,
+      initialMouseX: e.clientX,
+      initialMouseY: e.clientY,
       cardPosition: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 },
       mouseOffset: { x: e.clientX - rect.left, y: e.clientY - rect.top },
     });
@@ -182,6 +195,8 @@ const GamePage: React.FC = () => {
       card,
       currentX: e.clientX,
       currentY: e.clientY,
+      initialMouseX: e.clientX,
+      initialMouseY: e.clientY,
       cardPosition: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 },
       mouseOffset: { x: e.clientX - rect.left, y: e.clientY - rect.top },
     });
@@ -263,10 +278,34 @@ const GamePage: React.FC = () => {
           }
 
           if (dragState.sourceZone === 'battlefield') {
-            const localX = x - bfRect.left - dragState.mouseOffset.x;
-            const localY = y - bfRect.top - dragState.mouseOffset.y;
-            const isValidPosition = localX >= 0 && localX <= bfRect.width - 64 && localY >= 0 && localY <= bfRect.height - 96;
 
+            // Calculate movement delta in screen coordinates
+            const screenDeltaX = x - dragState.initialMouseX;
+            const screenDeltaY = y - dragState.initialMouseY;
+            
+            // Calculate new position by applying delta to original logical position
+            const originalX = dragState.originalLogicalPosition?.x || 0;
+            const originalY = dragState.originalLogicalPosition?.y || 0;
+            
+            let localX = originalX + screenDeltaX;
+            let localY = originalY + screenDeltaY;
+            
+            var cardWidth = Number(CARD_SIZES['sm'].width);
+            var cardHeight = Number(CARD_SIZES['sm'].height);
+
+            if (dragState.card?.is_tapped) {              
+              const temp = cardHeight;
+              cardHeight = cardWidth;
+              cardWidth = temp;
+            }
+
+            let isValidPosition = (
+              0 <= localX && 
+              localX <= bfRect.width - cardWidth + 16 && 
+              localY >= 0 - 32 && 
+              localY <= bfRect.height + cardHeight
+            );
+            
             if (isValidPosition) {
               await updateBattlefieldPosition(gameIdNum, dragState.cardId, localX, localY);
               setDragState(null);

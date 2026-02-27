@@ -112,15 +112,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   // Login method
-  const login = async (email: string, password: string): Promise<void> => {
-    console.log('AuthContext: Starting login...');
+  const login = async (email: string, password: string): Promise<void> => {   
     dispatch({ type: 'AUTH_START' });
     try {
-      console.log('AuthContext: Calling API login...');
       const tokens = await apiClient.login(email, password);
-      console.log('AuthContext: Got tokens, fetching user...');
       const user = await apiClient.getCurrentUser();
-      console.log('AuthContext: Got user, dispatching success');
       dispatch({ 
         type: 'AUTH_SUCCESS', 
         payload: { 
@@ -129,9 +125,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           refreshToken: tokens.refresh_token 
         } 
       });
-      console.log('AuthContext: Login complete');
     } catch (error: any) {
-      console.error('AuthContext: Login failed:', error);
       const errorMessage = error.response?.data?.detail || 'Login failed';
       dispatch({ type: 'AUTH_FAILURE', payload: errorMessage });
       throw error;
