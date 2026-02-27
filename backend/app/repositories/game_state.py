@@ -67,7 +67,7 @@ class GameCardRepository(BaseRepository[GameCard]):
         return self.db.query(GameCard).filter(
             GameCard.player_game_state_id == player_state_id,
             GameCard.zone == zone.value
-        ).order_by(GameCard.position).all()
+        ).order_by(GameCard.position.asc()).all()
     
     def get_card_by_id(self, card_id: int) -> Optional[GameCard]:
         """Get a card by ID"""
@@ -149,13 +149,20 @@ class GameCardRepository(BaseRepository[GameCard]):
         x: float, 
         y: float
     ) -> Optional[GameCard]:
-        """Update card position on battlefield"""
+        """Update card position on battlefield and move to end of array (top)"""
         card = self.get_card_by_id(card_id)
         if not card:
             return None
         
         card.battlefield_x = x
         card.battlefield_y = y
+        
+        current_zone_cards = self.get_player_cards_in_zone(
+            card.player_game_state_id, 
+            CardZone.BATTLEFIELD
+        )
+        max_position = max((c.position for c in current_zone_cards), default=0)
+        card.position = max_position + 1
         
         self.db.commit()
         self.db.refresh(card)

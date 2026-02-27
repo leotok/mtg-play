@@ -50,6 +50,7 @@ class GameCardInBattlefieldResponse(BaseModel):
     battlefield_y: Optional[float] = None
     is_attacking: bool
     is_blocking: bool
+    position: int
 
 
 class PlayerGameStateResponse(BaseModel):

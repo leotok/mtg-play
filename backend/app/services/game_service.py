@@ -580,6 +580,7 @@ class GameService:
             "battlefield_y": card.battlefield_y,
             "is_attacking": card.is_attacking,
             "is_blocking": card.is_blocking,
+            "position": card.position,
         }
     
     async def draw_card(self, game_id: int, current_user: User) -> GameStateResponse:
@@ -665,12 +666,16 @@ class GameService:
             )
         
         hand_cards = self.game_card_repo.get_player_cards_in_zone(player_state.id, CardZone.HAND)
-        new_position = len(self.game_card_repo.get_player_cards_in_zone(player_state.id, target_zone))
+        zone_cards = self.game_card_repo.get_player_cards_in_zone(player_state.id, target_zone)
+        if zone_cards:
+            max_position = sorted(zone_cards, key=lambda card: card.position if card else 1)[-1].position
+        else:
+            max_position = 1
         
         self.game_card_repo.move_card(
             card_id, 
             target_zone, 
-            new_position,
+            max_position + 1,
             battlefield_x=battlefield_x,
             battlefield_y=battlefield_y
         )
@@ -722,8 +727,8 @@ class GameService:
                 detail="This card is not yours"
             )
         
-        # For graveyard and exile, always append to end (LIFO)
-        if target_zone in (CardZone.GRAVEYARD, CardZone.EXILE):
+        # For graveyard, exile, and battlefield, always append to end
+        if target_zone in (CardZone.GRAVEYARD, CardZone.EXILE, CardZone.BATTLEFIELD):
             existing_cards = self.game_card_repo.get_player_cards_in_zone(
                 player_state.id, target_zone
             )

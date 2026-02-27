@@ -25,8 +25,10 @@ export const Card: React.FC<{
   const cardWidth = CARD_SIZES[size || baseCardSize].width * (cardScale / 100);
 
   const [isHovered, setIsHovered] = useState(false);
+  const isHoveredRef = useRef(false);
   const isPreviewShownRef = useRef(false);
   const wasDraggingRef = useRef(false);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (wasDraggingRef.current && !isDragging && isPreviewShownRef.current && onHover) {
@@ -35,10 +37,23 @@ export const Card: React.FC<{
     wasDraggingRef.current = isDragging;
   }, [isDragging, card, onHover]);
 
+  useEffect(() => {
+    if (!isDragging && !isHoveredRef.current && cardRef.current) {
+      const checkHover = () => {
+        if (cardRef.current && cardRef.current.matches(':hover')) {
+          isHoveredRef.current = true;
+          setIsHovered(true);
+        }
+      };
+      setTimeout(checkHover, 50);
+    }
+  }, [card.id, isDragging]);
+
   const imageUrl = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal;
   const cardName = hidden ? 'Unknown Card' : card.card_name;
 
   const handleMouseEnter = () => {
+    isHoveredRef.current = true;
     if (!hidden && onHover) {
       onHover(card);
       isPreviewShownRef.current = true;
@@ -67,6 +82,7 @@ export const Card: React.FC<{
   };
 
   const handleMouseLeave = () => {
+    isHoveredRef.current = false;
     isPreviewShownRef.current = false;
     if (onHover) {
       onHover(null);
@@ -83,10 +99,12 @@ export const Card: React.FC<{
   const hoverScaleTransform = isHovered ? `scale(${hoverScale})` : '';
   const rotationTransform = cardRotation !== 0 ? `rotate(${cardRotation}deg)` : '';
   const combinedTransform = [scaleTransform, hoverScaleTransform, rotationTransform].filter(Boolean).join(' ');
-  const scaleStyle = combinedTransform ? { ...style, transform: combinedTransform } : style;
+  const hoverBorder = isHovered || isDragging ? { boxShadow: '0 0 0 2px #fbbf24, 0 0 10px #fbbf24' } : {};
+  const scaleStyle = combinedTransform ? { ...style, transform: combinedTransform, ...hoverBorder } : { ...style, ...hoverBorder };
 
   return (
     <div
+      ref={cardRef}
       onMouseDown={handleMouseDown}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
@@ -99,7 +117,7 @@ export const Card: React.FC<{
         ${isDragging ? 'z-50' : ''}
         ${hidden ? 'display-none' : ''}
       `}
-      style={{...scaleStyle, zIndex: idx, position: 'relative', left, top: cardTop, width: cardWidth, height: cardHeight, pointerEvents: 'all'}}
+      style={{...scaleStyle, zIndex: idx, position: 'relative', left, top: cardTop, width: cardWidth, height: cardHeight, pointerEvents: 'all', borderRadius: '8px'}}
     >
       {hidden ? (
         <img 

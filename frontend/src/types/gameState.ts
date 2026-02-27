@@ -63,9 +63,10 @@ export interface GameCard {
   damage_received: number;
 }
 
-export interface GameCardInBattlefield extends Omit<GameCard, 'zone' | 'position' | 'damage_received'> {
+export interface GameCardInBattlefield extends Omit<GameCard, 'zone' | 'damage_received'> {
   battlefield_x?: number;
   battlefield_y?: number;
+  position: number;
 }
 
 export interface PlayerGameState {

@@ -32,6 +32,7 @@ export const Battlefield: React.FC<{
                 {player.battlefield.map((card) => {
                 const isDraggingThis = dragState?.isDragging && dragState?.cardId === card.id;
                 if (isDraggingThis) return null;
+                const cardZIndex = (card.position ?? 0) + 1;
                 return (
                     <div
                     key={card.id}
@@ -40,13 +41,14 @@ export const Battlefield: React.FC<{
                         left: card.battlefield_x || 5, 
                         top: card.battlefield_y || 5,
                         transition: 'all 0.1s ease',
-                        zIndex: 1,
+                        zIndex: cardZIndex,
                         pointerEvents: 'all',
                     }}
                     >
                     <Card 
                         card={card} 
                         size="sm"
+                        idx={cardZIndex}
                         onTap={() => onTapCard?.(card.id)}
                         onMouseDown={isCurrentUser ? (e) => onMouseDownCard?.(card, e) : undefined}
                         onHover={onHoverCard}
