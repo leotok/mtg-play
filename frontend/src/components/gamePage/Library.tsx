@@ -18,7 +18,7 @@ export const Library: React.FC<{
                     style={{ height: cardHeight }}
                 >
                     <img 
-                        src="https://static.wikia.nocookie.net/mtgsalvation_gamepedia/images/f/f8/Magic_card_back.jpg" 
+                        src="https://backs.scryfall.io/small/2/2/222b7a3b-2321-4d4c-af19-19338b134971.jpg" 
                         alt="Card Back"
                         className="w-full h-full object-cover"
                     />

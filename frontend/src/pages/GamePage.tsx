@@ -28,10 +28,7 @@ const GamePage: React.FC = () => {
     moveCard,
   } = useGameStateStore();
 
-  const [hoveredCard, setHoveredCard] = useState<{
-    card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string };
-    position: { x: number; y: number };
-  } | null>(null);
+  const [hoveredCard, setHoveredCard] = useState<GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null>(null);
 
   const [dragState, setDragState] = useState<{
     isDown: boolean
@@ -398,16 +395,16 @@ const GamePage: React.FC = () => {
 
       {hoveredCard && !dragState?.isDragging && (() => {
         const currentUser = gameState.players.find(p => p.user_id === user?.id);
-        const isCommander = gameState.players.some(p => p.commander.some(c => c.id === hoveredCard.card.id));
-        const isOpponent = currentUser && !(
-          currentUser.hand.some(c => c.id === hoveredCard.card.id) ||
-          currentUser.battlefield.some(c => c.id === hoveredCard.card.id) ||
-          currentUser.commander.some(c => c.id === hoveredCard.card.id) ||
-          currentUser.graveyard.some(c => c.id === hoveredCard.card.id) ||
-          currentUser.exile.some(c => c.id === hoveredCard.card.id) ||
-          currentUser.library.some(c => c.id === hoveredCard.card.id)
+        const isCommander = gameState.players.some(p => p.commander.some(c => c.id === hoveredCard.id));
+        const isCurrentUserCard = currentUser && (
+          currentUser.hand.some(c => c.id === hoveredCard.id) ||
+          currentUser.battlefield.some(c => c.id === hoveredCard.id) ||
+          currentUser.commander.some(c => c.id === hoveredCard.id) ||
+          currentUser.graveyard.some(c => c.id === hoveredCard.id) ||
+          currentUser.exile.some(c => c.id === hoveredCard.id) ||
+          currentUser.library.some(c => c.id === hoveredCard.id)
         );
-        return <CardPreview card={hoveredCard.card} position={hoveredCard.position} isOpponent={isOpponent} isCommander={isCommander} />;
+        return <CardPreview card={hoveredCard} isCurrentUserCard={isCurrentUserCard} isCommander={isCommander} />;
       })()}
 
       {/* Game Board */}
@@ -432,7 +429,7 @@ const GamePage: React.FC = () => {
                   isCurrentUser={isCurrentUserPlayer}
                   isActive={player.is_active}
                   onTapCard={isCurrentUserPlayer ? handleTapCard : undefined}
-                  onHoverCard={(card, position) => setHoveredCard(card ? { card, position } : null)}
+                  onHoverCard={(card) => setHoveredCard(card)}
                   onMouseDownCard={isCurrentUserPlayer ? handleMouseDownBattlefield : undefined}
                   onMouseDownHand={isCurrentUserPlayer ? handleMouseDownHand : undefined}
                   onMouseDownCommander={isCurrentUserPlayer ? handleMouseDownCommander : undefined}

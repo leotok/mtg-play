@@ -10,7 +10,7 @@ export const CommanderZone: React.FC<{
     hoveredZone?: CardZone | null;
     isCurrentUser: boolean;
     onMouseDownCommander?: (card: GameCard, e: React.MouseEvent) => void;
-    onHoverCard?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null, position: { x: number; y: number }) => void;
+    onHoverCard?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null) => void;
     className?: string;
 }> = ({ player, commanderRef, hoveredZone, isCurrentUser, onMouseDownCommander, onHoverCard, className = '' }) => {
     const cardHeight = useSettingsStore(state => state.getCardHeight());

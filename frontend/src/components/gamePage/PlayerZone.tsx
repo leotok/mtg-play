@@ -15,7 +15,7 @@ export const PlayerZone: React.FC<{
   isCurrentUser: boolean;
   isActive: boolean;
   onTapCard?: (cardId: number) => void;
-  onHoverCard?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null, position: { x: number; y: number }) => void;
+  onHoverCard?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null) => void;
   onMouseDownCard?: (card: GameCardInBattlefield, e: React.MouseEvent) => void;
   onMouseDownHand?: (card: GameCard, e: React.MouseEvent) => void;
   onMouseDownCommander?: (card: GameCard, e: React.MouseEvent) => void;

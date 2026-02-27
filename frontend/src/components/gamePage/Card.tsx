@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { type GameCard } from '../../types/gameState';
 import { useSettingsStore } from '../../store/settingsStore';
 import { CARD_SIZES, type CardSizeKey } from '../../config';
@@ -7,7 +7,7 @@ export const Card: React.FC<{
   card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string; is_tapped?: boolean; battlefield_x?: number; battlefield_y?: number; is_attacking?: boolean; is_blocking?: boolean; is_face_up?: boolean };
   onTap?: () => void;
   onMouseDown?: (e: React.MouseEvent) => void;
-  onHover?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null, position: { x: number; y: number }) => void;
+  onHover?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null) => void;
   size?: CardSizeKey;
   hidden?: boolean;
   isDragging?: boolean;
@@ -25,13 +25,23 @@ export const Card: React.FC<{
   const cardWidth = CARD_SIZES[size || baseCardSize].width * (cardScale / 100);
 
   const [isHovered, setIsHovered] = useState(false);
+  const isPreviewShownRef = useRef(false);
+  const wasDraggingRef = useRef(false);
+
+  useEffect(() => {
+    if (wasDraggingRef.current && !isDragging && isPreviewShownRef.current && onHover) {
+      onHover(card);
+    }
+    wasDraggingRef.current = isDragging;
+  }, [isDragging, card, onHover]);
 
   const imageUrl = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal;
   const cardName = hidden ? 'Unknown Card' : card.card_name;
 
-  const handleMouseEnter = (e: React.MouseEvent) => {
+  const handleMouseEnter = () => {
     if (!hidden && onHover) {
-      onHover(card, { x: e.clientX, y: e.clientY });
+      onHover(card);
+      isPreviewShownRef.current = true;
     }
     setIsHovered(true);
   };
@@ -42,10 +52,8 @@ export const Card: React.FC<{
     }
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!hidden && onHover) {
-      onHover(card, { x: e.clientX, y: e.clientY });
-    }
+  const handleMouseMove = () => {
+    // Position tracking removed - no longer needed
   };
 
   const handleDoubleClick = () => {
@@ -54,13 +62,14 @@ export const Card: React.FC<{
     }
   };
 
-  const handleClick = (e: React.MouseEvent) => {
+  const handleClick = () => {
     // TODO: Implement card click behavior
   };
 
   const handleMouseLeave = () => {
+    isPreviewShownRef.current = false;
     if (onHover) {
-      onHover(null, { x: 0, y: 0 });
+      onHover(null);
     }
     setIsHovered(false);
   };
@@ -94,7 +103,7 @@ export const Card: React.FC<{
     >
       {hidden ? (
         <img 
-          src="https://static.wikia.nocookie.net/mtgsalvation_gamepedia/images/f/f8/Magic_card_back.jpg"
+          src="https://backs.scryfall.io/small/2/2/222b7a3b-2321-4d4c-af19-19338b134971.jpg"
           alt="Card Back"
           className="w-full h-full object-cover rounded-md pointer-events-none"
         />

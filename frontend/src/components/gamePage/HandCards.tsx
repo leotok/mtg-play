@@ -23,7 +23,7 @@ export const HandCards: React.FC<{
         mouseOffset: { x: number; y: number };
     } | null;
     onMouseDownHand?: (card: GameCard, e: React.MouseEvent) => void;
-    onHoverCard?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null, position: { x: number; y: number }) => void;
+    onHoverCard?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null) => void;
 }> = ({player, isCurrentUser, handRef, hoveredZone, dragState, onMouseDownHand, onHoverCard }) => {
     const cardHeight = useSettingsStore(state => state.getCardHeight());
     const cardScale = useSettingsStore(state => state.cardScale);
