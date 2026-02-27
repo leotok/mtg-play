@@ -45,7 +45,7 @@ export const HandCards: React.FC<{
     const availableWidthPerCard = maxHandWidth / (handCardCount || 1)
     const cardOffset = cardWidth - Math.min(maxOffset, Math.max(minOffset, availableWidthPerCard));
 
-    let rotation = 1;
+    let rotation = 0;
     
     if (handCardCount === 1) {
         rotation = 0;
@@ -57,10 +57,12 @@ export const HandCards: React.FC<{
         rotation = 4;
     } else if (handCardCount <= 8) {
         rotation = 2;
+    } else if (handCardCount <= 12) {
+        rotation = 1;
     }
     
     const cardRotation = rotation
-    const cardTop = 1;
+    const cardTop = rotation == 0? 0 : 1;
     
     if (isCurrentUser) {
         return (

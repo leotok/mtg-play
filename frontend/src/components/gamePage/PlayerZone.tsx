@@ -72,7 +72,15 @@ export const PlayerZone: React.FC<{
           onHoverCard={onHoverCard}
         />
         
-        <div className="flex gap-2 ml-auto">
+        <div className="ml-auto flex gap-2 items-end">
+          {/* Hand size */}
+          <div className={`flex items-end`}
+          >
+            <span className="text-xs text-gray-500 uppercase">
+              Hand ({player.hand.length})
+            </span>
+          </div>
+          
           <CommanderZone
             player={player}
             commanderRef={commanderRef}
