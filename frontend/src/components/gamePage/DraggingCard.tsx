@@ -16,52 +16,87 @@ export const DraggingCard: React.FC<{
         cardPosition: { x: number; y: number };
         mouseOffset: { x: number; y: number };
         originalLogicalPosition?: { x: number; y: number };
+        selectedCards?: Array<{ id: number; originalX: number; originalY: number; isTapped: boolean; cardData: GameCardInBattlefield }>;
     } | null;
     isCurrentUser: boolean;
     battlefieldRef?: React.RefObject<HTMLDivElement | null>;
 }> = ({ dragState, isCurrentUser, battlefieldRef }) => {
+    
     const [battlefieldRect, setBattlefieldRect] = useState<DOMRect | null>(null);
     
     useEffect(() => {
         if (battlefieldRef?.current) {
             setBattlefieldRect(battlefieldRef.current.getBoundingClientRect());
         }
-    }, [battlefieldRef]);
+    }, [battlefieldRef, dragState]);
     
-    if (dragState && dragState.isDragging && isCurrentUser && dragState.card) {
-        let left, top;
+    if (!dragState || !dragState.isDragging || !isCurrentUser || !dragState.card) {
+        return null;
+    }
+
+    const renderDragCard = (card: GameCard | GameCardInBattlefield, offsetX: number, offsetY: number): React.ReactNode => {
+        let left: number;
+        let top: number;
         
-        if (dragState.card.is_tapped && dragState.originalLogicalPosition && dragState.sourceZone === 'battlefield' && battlefieldRect) {
-            // Use same logic as mouse up: apply screen delta to original logical position
+        if (card.is_tapped && battlefieldRect && dragState.sourceZone === 'battlefield' && dragState.originalLogicalPosition) {
             const screenDeltaX = dragState.currentX - dragState.initialMouseX;
             const screenDeltaY = dragState.currentY - dragState.initialMouseY;
-            
             const originalX = dragState.originalLogicalPosition.x;
             const originalY = dragState.originalLogicalPosition.y;
-            
-            // Calculate the logical position
-            const logicalX = originalX + screenDeltaX;
-            const logicalY = originalY + screenDeltaY;
-            
-            // Convert logical coordinates (relative to battlefield) to screen coordinates
+            const logicalX = originalX + screenDeltaX + offsetX;
+            const logicalY = originalY + screenDeltaY + offsetY;
             left = battlefieldRect.left + logicalX;
             top = battlefieldRect.top + logicalY;
+        } else if (dragState.sourceZone === 'battlefield' && dragState.originalLogicalPosition) {
+            const screenDeltaX = dragState.currentX - dragState.initialMouseX;
+            const screenDeltaY = dragState.currentY - dragState.initialMouseY;
+            const originalX = dragState.originalLogicalPosition.x;
+            const originalY = dragState.originalLogicalPosition.y;
+            const logicalX = originalX + screenDeltaX + offsetX;
+            const logicalY = originalY + screenDeltaY + offsetY;
+            left = battlefieldRect ? battlefieldRect.left + logicalX : dragState.currentX - dragState.mouseOffset.x + offsetX;
+            top = battlefieldRect ? battlefieldRect.top + logicalY : dragState.currentY - dragState.mouseOffset.y + offsetY;
         } else {
-            // Use original logic for non-tapped cards or other zones
-            left = dragState.currentX - dragState.mouseOffset.x;
-            top = dragState.currentY - dragState.mouseOffset.y;
+            left = dragState.currentX - dragState.mouseOffset.x + offsetX;
+            top = dragState.currentY - dragState.mouseOffset.y + offsetY;
         }
         
         return (
-                <div
-                  className="fixed pointer-events-none z-50"
-                  style={{
+            <div
+                key={card.id}
+                className="fixed pointer-events-none z-50"
+                style={{
                     left: left,
                     top: top,
-                  }}
-                >
-                  <Card card={dragState.card} size="sm" isDragging />
-                </div>
-        )}
-    return null;
+                }}
+            >
+                <Card card={card} size="sm" isDragging />
+            </div>
+        );
+    };
+
+    const cards: Array<{ card: GameCard | GameCardInBattlefield; offsetX: number; offsetY: number }> = [];
+    
+    if (dragState.selectedCards && dragState.selectedCards.length > 0) {
+        const mainOriginalX = dragState.originalLogicalPosition?.x || 0;
+        const mainOriginalY = dragState.originalLogicalPosition?.y || 0;
+        
+        dragState.selectedCards.forEach(selected => {
+            if (selected.id === dragState.cardId) {
+                cards.push({ card: dragState.card!, offsetX: 0, offsetY: 0 });
+            } else {
+                const offsetX = selected.originalX - mainOriginalX;
+                const offsetY = selected.originalY - mainOriginalY;
+                cards.push({ card: selected.cardData, offsetX, offsetY });
+            }
+        });
+    } else {
+        cards.push({ card: dragState.card, offsetX: 0, offsetY: 0 });
+    }
+    
+    return (
+        <>
+            {cards.map(({ card, offsetX, offsetY }) => renderDragCard(card, offsetX, offsetY))}
+        </>
+    );
 };

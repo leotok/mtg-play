@@ -151,7 +151,9 @@ uv run alembic downgrade -1
 - ✅ User authentication and deck management
 - ✅ Basic game engine (turns, phases, zones)
 - ✅ Game lobby
-- [DOING] Game board UI with drag-and-drop
+- ✅ Game board UI with drag-and-drop
+- Card multi-selection drag-and-drop
+- Use socket.io for real-time game state synchronization during gameplay
 
 ### Phase 2: Game Complexity
 - Move validation

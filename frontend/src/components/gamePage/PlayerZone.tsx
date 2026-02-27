@@ -21,6 +21,7 @@ export const PlayerZone: React.FC<{
   onMouseDownCommander?: (card: GameCard, e: React.MouseEvent) => void;
   onMouseDownGraveyard?: (card: GameCard, e: React.MouseEvent) => void;
   onMouseDownExile?: (card: GameCard, e: React.MouseEvent) => void;
+  onMouseDownEmptyBattlefield?: (e: React.MouseEvent) => void;
   battlefieldRef?: React.RefObject<HTMLDivElement | null>;
   handRef?: React.RefObject<HTMLDivElement | null> | ((el: HTMLDivElement | null) => void);
   commanderRef?: React.RefObject<HTMLDivElement | null> | ((el: HTMLDivElement | null) => void);
@@ -40,7 +41,8 @@ export const PlayerZone: React.FC<{
     originalLogicalPosition?: { x: number; y: number };
   } | null;
   hoveredZone?: CardZone | null;
-}> = ({ player, isCurrentUser, isActive, onTapCard, onHoverCard, onMouseDownCard, onMouseDownHand, onMouseDownCommander, onMouseDownGraveyard, onMouseDownExile, battlefieldRef, handRef, commanderRef, graveyardRef, exileRef, dragState, hoveredZone }) => {
+  selectedCardIds?: Set<number>;
+}> = ({ player, isCurrentUser, isActive, onTapCard, onHoverCard, onMouseDownCard, onMouseDownHand, onMouseDownCommander, onMouseDownGraveyard, onMouseDownExile, onMouseDownEmptyBattlefield, battlefieldRef, handRef, commanderRef, graveyardRef, exileRef, dragState, hoveredZone, selectedCardIds }) => {
   const backgroundColor = isCurrentUser ? 'darkslateblue' : 'darkslategray';
 
   return (
@@ -59,6 +61,8 @@ export const PlayerZone: React.FC<{
         onTapCard={onTapCard}
         onMouseDownCard={onMouseDownCard}
         onHoverCard={onHoverCard}
+        onMouseDownEmptyBattlefield={onMouseDownEmptyBattlefield}
+        selectedCardIds={selectedCardIds}
       />
 
       <div className="h-auto flex gap-2 items-end w-full min-w-0">

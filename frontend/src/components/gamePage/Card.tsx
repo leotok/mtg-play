@@ -11,6 +11,7 @@ export const Card: React.FC<{
   size?: CardSizeKey;
   hidden?: boolean;
   isDragging?: boolean;
+  isSelected?: boolean;
   style?: React.CSSProperties;
   scale?: number;
   handIndex?: number; // Position in hand for angles (e.g., -2, -1, 0, 1, 2)
@@ -19,7 +20,7 @@ export const Card: React.FC<{
   inHand?: boolean;
   rotation?: number;
   top?: number;
-}> = ({ card, onTap, onMouseDown, onHover, size, hidden = false, isDragging = false, style, scale, handIndex = 0, idx = 0, horizontalOffset = -40, inHand = false, rotation = 0, top = 0 }) => {
+}> = ({ card, onTap, onMouseDown, onHover, size, hidden = false, isDragging = false, isSelected = false, style, scale, handIndex = 0, idx = 0, horizontalOffset = -40, inHand = false, rotation = 0, top = 0 }) => {
   const { baseCardSize, cardScale } = useSettingsStore();
   const cardHeight = CARD_SIZES[size || baseCardSize].height * (cardScale / 100);
   const cardWidth = CARD_SIZES[size || baseCardSize].width * (cardScale / 100);
@@ -99,7 +100,16 @@ export const Card: React.FC<{
   const hoverScaleTransform = isHovered ? `scale(${hoverScale})` : '';
   const rotationTransform = cardRotation !== 0 ? `rotate(${cardRotation}deg)` : '';
   const combinedTransform = [scaleTransform, hoverScaleTransform, rotationTransform].filter(Boolean).join(' ');
-  const hoverBorder = isHovered || isDragging ? { boxShadow: '0 0 0 2px #fbbf24, 0 0 10px #fbbf24' } : {};
+  const getBorderStyle = () => {
+    if (isSelected) {
+      return { boxShadow: '0 0 0 2px #22d3ee, 0 0 10px #22d3ee' };
+    }
+    if (isHovered || isDragging) {
+      return { boxShadow: '0 0 0 2px #fbbf24, 0 0 10px #fbbf24' };
+    }
+    return {};
+  };
+  const hoverBorder = getBorderStyle();
   const scaleStyle = combinedTransform ? { ...style, transform: combinedTransform, ...hoverBorder } : { ...style, ...hoverBorder };
 
   return (
