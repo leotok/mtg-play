@@ -17,7 +17,9 @@ export const Card: React.FC<{
   idx?: number; // Index in hand array for z-index (e.g., 0, 1, 2, 3, 4)
   horizontalOffset?: number;
   inHand?: boolean;
-}> = ({ card, onTap, onMouseDown, onHover, size, hidden = false, isDragging = false, style, scale, handIndex = 0, idx = 0, horizontalOffset = -40, inHand = false }) => {
+  rotation?: number;
+  top?: number;
+}> = ({ card, onTap, onMouseDown, onHover, size, hidden = false, isDragging = false, style, scale, handIndex = 0, idx = 0, horizontalOffset = -40, inHand = false, rotation = 0, top = 0 }) => {
   const { baseCardSize, cardScale } = useSettingsStore();
   const cardHeight = CARD_SIZES[size || baseCardSize].height * (cardScale / 100);
   const cardWidth = CARD_SIZES[size || baseCardSize].width * (cardScale / 100);
@@ -61,13 +63,13 @@ export const Card: React.FC<{
   };
 
   const left = handIndex * horizontalOffset;
-  const top = Math.abs(handIndex * 8 );
+  const cardTop = top;
 
-  const rotation = card.is_tapped ? 90 : (handIndex * 4);
+  const cardRotation = card.is_tapped ? 90 : rotation;
   const hoverScale = isHovered && inHand ? 1.05 : 1;
   const scaleTransform = scale !== undefined && scale !== 100 ? `scale(${scale / 100})` : '';
   const hoverScaleTransform = isHovered ? `scale(${hoverScale})` : '';
-  const rotationTransform = rotation !== 0 ? `rotate(${rotation}deg)` : '';
+  const rotationTransform = cardRotation !== 0 ? `rotate(${cardRotation}deg)` : '';
   const combinedTransform = [scaleTransform, hoverScaleTransform, rotationTransform].filter(Boolean).join(' ');
   const scaleStyle = combinedTransform ? { ...style, transform: combinedTransform } : style;
 
@@ -84,7 +86,7 @@ export const Card: React.FC<{
         ${isDragging ? 'z-50' : ''}
         ${hidden ? 'display-none' : ''}
       `}
-      style={{...scaleStyle, zIndex: idx, position: 'relative', left, top, width: cardWidth, height: cardHeight}}
+      style={{...scaleStyle, zIndex: idx, position: 'relative', left, top: cardTop, width: cardWidth, height: cardHeight}}
     >
       {hidden ? (
         <img 

@@ -29,9 +29,12 @@ export const HandCards: React.FC<{
     const cardScale = useSettingsStore(state => state.cardScale);
     const handHeight = cardHeight * 0.7;
     const opponentHandHeight = cardHeight * 0.45;
-
+    
     const opponentContainerRef = useRef<HTMLDivElement>(null);
     
+    const handIndexArray = player.hand.map((_, idx) => {
+        return (idx - (player.hand.length/2));
+    });
     
     const cardWidth = CARD_SIZES.sm.width * (cardScale / 100);
     const handCardCount = player.hand.length;
@@ -39,14 +42,25 @@ export const HandCards: React.FC<{
     const maxOffset = 50;
     const maxHandWidth = 300;
 
-    const availableWidthPerCard = maxHandWidth / handCardCount
+    const availableWidthPerCard = maxHandWidth / (handCardCount || 1)
     const cardOffset = cardWidth - Math.min(maxOffset, Math.max(minOffset, availableWidthPerCard));
-    console.log('cardOffset', isCurrentUser, cardOffset);
 
-
-    const handIndexArray = player.hand.map((_, idx) => {
-        return (idx - (player.hand.length/2));
-    });
+    let rotation = 1;
+    
+    if (handCardCount === 1) {
+        rotation = 0;
+    } else if (handCardCount <= 2) {
+        rotation = 8;
+    } else if (handCardCount <= 4) {
+        rotation = 6;
+    } else if (handCardCount <= 6) {
+        rotation = 4;
+    } else if (handCardCount <= 8) {
+        rotation = 2;
+    }
+    
+    const cardRotation = rotation
+    const cardTop = 1;
     
     if (isCurrentUser) {
         return (
@@ -72,6 +86,8 @@ export const HandCards: React.FC<{
                     idx={idx}
                     inHand={true}
                     horizontalOffset={-cardOffset}
+                    rotation={cardRotation * handIndexArray[idx]}
+                    top={Math.abs(handIndexArray[idx] * cardTop)}
                 />
                 );
             })}
@@ -96,8 +112,11 @@ export const HandCards: React.FC<{
                         hidden={true}
                         onHover={onHoverCard}
                         handIndex={handIndexArray[idx]}
-                        zIndex={idx}
+                        idx={idx}
                         inHand={true}
+                        horizontalOffset={-cardOffset}
+                        rotation={cardRotation * handIndexArray[idx]}
+                        top={Math.abs(handIndexArray[idx] * cardTop)}
                     />
                 );
                 })}
