@@ -37,7 +37,6 @@ export const Card: React.FC<{
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
     if (onMouseDown) {
       onMouseDown(e);
     }
@@ -53,6 +52,10 @@ export const Card: React.FC<{
     if (onTap) {
       onTap();
     }
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    // TODO: Implement card click behavior
   };
 
   const handleMouseLeave = () => {
@@ -76,6 +79,7 @@ export const Card: React.FC<{
   return (
     <div
       onMouseDown={handleMouseDown}
+      onClick={handleClick}
       onDoubleClick={handleDoubleClick}
       onMouseEnter={handleMouseEnter}
       onMouseMove={handleMouseMove}
@@ -86,7 +90,7 @@ export const Card: React.FC<{
         ${isDragging ? 'z-50' : ''}
         ${hidden ? 'display-none' : ''}
       `}
-      style={{...scaleStyle, zIndex: idx, position: 'relative', left, top: cardTop, width: cardWidth, height: cardHeight}}
+      style={{...scaleStyle, zIndex: idx, position: 'relative', left, top: cardTop, width: cardWidth, height: cardHeight, pointerEvents: 'all'}}
     >
       {hidden ? (
         <img 

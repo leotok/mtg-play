@@ -41,7 +41,10 @@ export const PlayerZone: React.FC<{
   const backgroundColor = isCurrentUser ? 'darkslateblue' : 'darkslategray';
 
   return (
-    <div className={`p-2 pb-0 rounded-lg flex-1 flex flex-col relative ${isActive ? 'bg-yellow-900/30 border-2 border-yellow-500' : 'bg-gray-800/50 border border-gray-700'}`} style={{backgroundColor}}>
+    <div 
+      className={`p-2 pb-0 rounded-lg flex-1 flex flex-col relative ${isActive ? 'bg-yellow-900/30 border-2 border-yellow-500' : 'bg-gray-800/50 border border-gray-700'}`} 
+      style={{backgroundColor}}
+    >
       
       <LifeCounter player={player} />
 

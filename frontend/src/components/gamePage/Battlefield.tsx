@@ -35,12 +35,13 @@ export const Battlefield: React.FC<{
                 return (
                     <div
                     key={card.id}
-                    className="absolute"
+                    className="absolute cursor-pointer"
                     style={{ 
                         left: card.battlefield_x || 5, 
                         top: card.battlefield_y || 5,
                         transition: 'all 0.1s ease',
                         zIndex: 1,
+                        pointerEvents: 'all',
                     }}
                     >
                     <Card 

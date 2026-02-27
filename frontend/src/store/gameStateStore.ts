@@ -30,9 +30,7 @@ export const useGameStateStore = create<GameStateStore>((set) => ({
   fetchGameState: async (gameId: number) => {
     set({ isLoading: true, error: null });
     try {
-      console.log('Fetching game state for gameId:', gameId);
       const response = await apiClient.get<GameState>(`/games/${gameId}/state`);
-      console.log('Game state response:', response);
       set({ gameState: response, isLoading: false, gameId });
     } catch (err: any) {
       console.error('Failed to fetch game state:', err);

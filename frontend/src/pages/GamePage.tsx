@@ -33,6 +33,7 @@ const GamePage: React.FC = () => {
   } | null>(null);
 
   const [dragState, setDragState] = useState<{
+    isDown: boolean
     isDragging: boolean;
     cardId: number;
     sourceZone: CardZone;
@@ -110,11 +111,12 @@ const GamePage: React.FC = () => {
 
   const handleMouseDownBattlefield = (card: GameCardInBattlefield, e: React.MouseEvent) => {
     if (!battlefieldRef.current) return;
-    
+
     const rect = e.currentTarget.getBoundingClientRect();
     
     setDragState({
-      isDragging: true,
+      isDown: true,
+      isDragging: false,
       cardId: card.id,
       sourceZone: 'battlefield',
       card,
@@ -128,6 +130,7 @@ const GamePage: React.FC = () => {
   const handleMouseDownHand = (card: GameCard, e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setDragState({
+      isDown: true,
       isDragging: true,
       cardId: card.id,
       sourceZone: 'hand',
@@ -142,6 +145,7 @@ const GamePage: React.FC = () => {
   const handleMouseDownCommander = (card: GameCard, e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setDragState({
+      isDown: true,
       isDragging: true,
       cardId: card.id,
       sourceZone: 'commander',
@@ -156,6 +160,7 @@ const GamePage: React.FC = () => {
   const handleMouseDownGraveyard = (card: GameCard, e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setDragState({
+      isDown: true,
       isDragging: true,
       cardId: card.id,
       sourceZone: 'graveyard',
@@ -170,6 +175,7 @@ const GamePage: React.FC = () => {
   const handleMouseDownExile = (card: GameCard, e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setDragState({
+      isDown: true,
       isDragging: true,
       cardId: card.id,
       sourceZone: 'exile',
@@ -197,8 +203,11 @@ const GamePage: React.FC = () => {
       const x = e.clientX;
       const y = e.clientY;
 
+      // Determine if we're actually dragging (not just moving mouse) to avoid hiding the card before user drag it.
+      // If we hide too soon, click/double-click events won't work properly.
+      const isDragging = dragState.isDown;
       // Update drag position (always viewport coords)
-      setDragState(prev => prev ? { ...prev, currentX: x, currentY: y } : null);
+      setDragState(prev => prev ? { ...prev, currentX: x, currentY: y, isDragging } : null);
 
       // Check which zone we're hovering over
       if (battlefieldRef.current) {
