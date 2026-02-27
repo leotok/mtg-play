@@ -734,6 +734,12 @@ class GameService:
             )
             position = len(existing_cards)
         
+        # Untap card when moving from battlefield to another zone
+        if card.zone == CardZone.BATTLEFIELD and target_zone != CardZone.BATTLEFIELD:
+            if card.is_tapped:
+                card.is_tapped = False
+                self.game_card_repo.db.commit()
+        
         self.game_card_repo.move_card(card_id, target_zone, position)
         
         return await self.get_game_state(game_id, current_user)
