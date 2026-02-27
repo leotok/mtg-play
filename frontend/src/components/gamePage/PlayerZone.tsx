@@ -80,7 +80,7 @@ export const PlayerZone: React.FC<{
           {/* Hand size */}
           <div className={`flex items-end`}
           >
-            <span className="text-xs text-gray-500 uppercase">
+            <span className="text-xs text-white whitespace-nowrap">
               Hand ({player.hand.length})
             </span>
           </div>

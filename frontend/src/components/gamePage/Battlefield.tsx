@@ -28,7 +28,7 @@ export const Battlefield: React.FC<{
 
     return (
         <div className="h-[95%] min-h-0 pb-1">
-            <h4 className="text-xs text-gray-500 uppercase mb-1">Battlefield ({player.battlefield.length})</h4>
+            <h4 className="text-xs text-white mb-1">Battlefield ({player.battlefield.length})</h4>
             <div 
                 ref={battlefieldRef}
                 className={`h-[calc(100%-1.5rem)] p-1 border-2 rounded-lg relative select-none transition-colors border-none`}

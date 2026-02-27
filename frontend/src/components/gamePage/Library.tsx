@@ -9,7 +9,7 @@ export const Library: React.FC<{
     
     return (
         <div className={`w-auto relative flex flex-col justify-end items-end ${className}`} style={{top: 65, height: cardHeight}}>
-            <span className="text-xs text-gray-500 uppercase absolute -top-5 right-2">
+            <span className="text-xs text-white absolute -top-5 right-2">
                 Library ({player.library.length})
             </span>
             <div className="flex -mt-8 justify-end">
