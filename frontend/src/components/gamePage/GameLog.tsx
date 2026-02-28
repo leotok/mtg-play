@@ -49,7 +49,7 @@ export const GameLog: React.FC<GameLogProps> = ({ currentPlayerId }) => {
         {[...gameLogs].reverse().map((log) => (
           <div 
             key={log.id} 
-            className={`${getActionColor(log)} leading-tight`}
+            className={`${getActionColor(log)} leading-tight pt-3`}
           >
             <span className="text-gray-400 mr-1">[{formatTime(log.created_at)}]</span>
             {log.message}
