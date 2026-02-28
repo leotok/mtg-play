@@ -612,6 +612,7 @@ const GamePage: React.FC = () => {
           gameState={gameState}
           isCurrentUserActive={isCurrentUserActive}
           currentPlayer={currentPlayer}
+          currentPlayerId={user?.id || 0}
           handleDrawCard={handleDrawCard}
           handleUntapAll={handleUntapAll}
           handlePassPriority={handlePassPriority}

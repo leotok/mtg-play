@@ -95,6 +95,7 @@ export interface GameState {
   starting_player_id: number;
   players: PlayerGameState[];
   created_at: string;
+  logs?: GameLog[];
 }
 
 export const TURN_PHASE_LABELS: Record<TurnPhase, string> = {
@@ -111,3 +112,16 @@ export const TURN_PHASE_LABELS: Record<TurnPhase, string> = {
   end: 'End',
   cleanup: 'Cleanup',
 };
+
+export interface GameLog {
+  id: number;
+  game_id: number;
+  player_id: number;
+  action_type: string;
+  card_id?: number;
+  card_name?: string;
+  from_zone?: string;
+  to_zone?: string;
+  message: string;
+  created_at: string;
+}

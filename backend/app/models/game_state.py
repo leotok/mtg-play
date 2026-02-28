@@ -76,3 +76,20 @@ class GameCard(Base):
 
     game_state: Mapped["GameState"] = relationship("GameState", back_populates="cards")
     player_state: Mapped["PlayerGameState"] = relationship("PlayerGameState", back_populates="cards")
+
+
+class GameLog(Base):
+    __tablename__ = "game_logs"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    game_id: Mapped[int] = mapped_column(Integer, ForeignKey("game_states.id", ondelete="CASCADE"), nullable=False)
+    player_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    
+    action_type: Mapped[str] = mapped_column(String, nullable=False)
+    card_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    card_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    from_zone: Mapped[str | None] = mapped_column(String, nullable=True)
+    to_zone: Mapped[str | None] = mapped_column(String, nullable=True)
+    message: Mapped[str] = mapped_column(String, nullable=False)
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

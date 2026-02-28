@@ -3,16 +3,18 @@ import type { GameState, PlayerGameState } from "../../types/gameState";
 import { TURN_PHASE_LABELS } from "../../types/gameState";
 import { ArrowRightIcon } from "@heroicons/react/24/outline";
 import { useSettingsStore } from "../../store/settingsStore";
+import { GameLog } from "./GameLog";
 
 export const GameSideBar: React.FC<{
     gameState: GameState;
     isCurrentUserActive: boolean;
     currentPlayer?: PlayerGameState | null;
+    currentPlayerId: number;
     handleDrawCard: () => void;
     handleUntapAll: () => void;
     handlePassPriority: () => void;
     isLoading: boolean;
-}> = ({gameState, isCurrentUserActive, currentPlayer, handleDrawCard, handleUntapAll, handlePassPriority, isLoading}) => {
+}> = ({gameState, isCurrentUserActive, currentPlayer, currentPlayerId, handleDrawCard, handleUntapAll, handlePassPriority, isLoading}) => {
     const { cardScale, setCardScale } = useSettingsStore();
     
     return (
@@ -58,6 +60,9 @@ export const GameSideBar: React.FC<{
                     </button>
                     </div>
                 </div>
+
+                {/* Game Log */}
+                <GameLog currentPlayerId={currentPlayerId} />
 
                 <div className="flex-1" />
 

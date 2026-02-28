@@ -7,7 +7,7 @@ from app.models.game import GameRoom, GameRoomPlayer, GameStatus, PlayerStatus, 
 from app.models.game_state import GameState, PlayerGameState, GameCard
 from app.repositories.game import GameRoomRepository, GameRoomPlayerRepository
 from app.repositories import DeckRepository
-from app.repositories.game_state import GameStateRepository, PlayerGameStateRepository, GameCardRepository
+from app.repositories.game_state import GameStateRepository, PlayerGameStateRepository, GameCardRepository, GameLogRepository
 from app.schemas.game import (
     GameRoomCreate,
     GameRoomResponse,
@@ -22,6 +22,7 @@ from app.schemas.game_state import (
     PlayerGameStateResponse,
     GameCardResponse,
     GameCardInBattlefieldResponse,
+    GameLogResponse,
 )
 from app.services.scryfall import get_scryfall_service
 import logging
@@ -41,6 +42,7 @@ class GameService:
         game_state_repo: Optional[GameStateRepository] = None,
         player_game_state_repo: Optional[PlayerGameStateRepository] = None,
         game_card_repo: Optional[GameCardRepository] = None,
+        game_log_repo: Optional[GameLogRepository] = None,
     ):
         self.game_repo = game_repo
         self.player_repo = player_repo
@@ -48,6 +50,7 @@ class GameService:
         self.game_state_repo = game_state_repo
         self.player_game_state_repo = player_game_state_repo
         self.game_card_repo = game_card_repo
+        self.game_log_repo = game_log_repo
     
     @classmethod
     def create_with_repositories(cls, db: Session):
@@ -57,6 +60,7 @@ class GameService:
         game_state_repo = GameStateRepository(db)
         player_game_state_repo = PlayerGameStateRepository(db)
         game_card_repo = GameCardRepository(db)
+        game_log_repo = GameLogRepository(db)
         return cls(
             game_repo, 
             player_repo, 
@@ -64,6 +68,7 @@ class GameService:
             game_state_repo,
             player_game_state_repo,
             game_card_repo,
+            game_log_repo,
         )
     
     def _get_game_or_404(self, game_id: int) -> GameRoom:
@@ -531,6 +536,7 @@ class GameService:
             starting_player_id=game_state.starting_player_id,
             players=player_responses,
             created_at=game_state.created_at,
+            logs=[GameLogResponse.model_validate(log) for log in self.game_log_repo.get_game_logs(game_state.id, 50)] if self.game_log_repo else [],
         )
     
     def _card_to_dict(self, card: GameCard, reveal: bool) -> dict:
@@ -610,6 +616,14 @@ class GameService:
         
         self.game_card_repo.draw_cards(player_state.id, 1)
         
+        if self.game_log_repo:
+            self.game_log_repo.create_log(
+                game_id=game_state.id,
+                player_id=current_user.id,
+                action_type="draw",
+                message=f"{current_user.username} drew a card"
+            )
+        
         return await self.get_game_state(game_id, current_user)
     
     async def play_card(
@@ -672,6 +686,8 @@ class GameService:
         else:
             max_position = 1
         
+        from_zone = card.zone
+        
         self.game_card_repo.move_card(
             card_id, 
             target_zone, 
@@ -679,6 +695,18 @@ class GameService:
             battlefield_x=battlefield_x,
             battlefield_y=battlefield_y
         )
+        
+        if self.game_log_repo:
+            self.game_log_repo.create_log(
+                game_id=game_state.id,
+                player_id=current_user.id,
+                action_type="play",
+                message=f"{current_user.username} played {card.card_name} from {from_zone}",
+                card_id=card.id,
+                card_name=card.card_name,
+                from_zone=from_zone,
+                to_zone=target_zone.value
+            )
         
         return await self.get_game_state(game_id, current_user)
     
@@ -734,6 +762,8 @@ class GameService:
             )
             position = len(existing_cards)
         
+        from_zone = card.zone
+        
         # Untap card when moving from battlefield to another zone
         if card.zone == CardZone.BATTLEFIELD and target_zone != CardZone.BATTLEFIELD:
             if card.is_tapped:
@@ -741,6 +771,18 @@ class GameService:
                 self.game_card_repo.db.commit()
         
         self.game_card_repo.move_card(card_id, target_zone, position)
+        
+        if self.game_log_repo:
+            self.game_log_repo.create_log(
+                game_id=game_state.id,
+                player_id=current_user.id,
+                action_type="move",
+                message=f"{current_user.username} moved {card.card_name} from {from_zone} to {target_zone.value}",
+                card_id=card.id,
+                card_name=card.card_name,
+                from_zone=from_zone,
+                to_zone=target_zone.value
+            )
         
         return await self.get_game_state(game_id, current_user)
     
@@ -786,6 +828,8 @@ class GameService:
             if card.player_game_state_id != player_state.id:
                 continue
             
+            from_zone = card.zone
+            
             if target_zone in (CardZone.GRAVEYARD, CardZone.EXILE, CardZone.BATTLEFIELD):
                 existing_cards = self.game_card_repo.get_player_cards_in_zone(
                     player_state.id, target_zone
@@ -798,6 +842,29 @@ class GameService:
                     self.game_card_repo.db.commit()
             
             self.game_card_repo.move_card(card_id, target_zone, position)
+        
+        if self.game_log_repo and cards:
+            card_count = len(cards)
+            if card_count == 1:
+                card = self.game_card_repo.get_card_by_id(cards[0].card_id)
+                if card:
+                    self.game_log_repo.create_log(
+                        game_id=game_state.id,
+                        player_id=current_user.id,
+                        action_type="move",
+                        message=f"{current_user.username} moved {card.card_name} from {from_zone} to {cards[0].target_zone.value}",
+                        card_id=card.id,
+                        card_name=card.card_name,
+                        from_zone=from_zone,
+                        to_zone=cards[0].target_zone.value
+                    )
+            else:
+                self.game_log_repo.create_log(
+                    game_id=game_state.id,
+                    player_id=current_user.id,
+                    action_type="move",
+                    message=f"{current_user.username} moved {card_count} cards to {cards[0].target_zone.value}"
+                )
         
         return await self.get_game_state(game_id, current_user)
     
@@ -844,7 +911,20 @@ class GameService:
                 detail="This card is not yours"
             )
         
+        was_tapped = card.is_tapped
+        
         self.game_card_repo.toggle_tapped(card_id)
+        
+        if self.game_log_repo:
+            tap_action = "untapped" if was_tapped else "tapped"
+            self.game_log_repo.create_log(
+                game_id=game_state.id,
+                player_id=current_user.id,
+                action_type="tap",
+                message=f"{current_user.username} {tap_action} {card.card_name}",
+                card_id=card.id,
+                card_name=card.card_name
+            )
         
         return await self.get_game_state(game_id, current_user)
     
@@ -959,6 +1039,8 @@ class GameService:
         if current_index < len(phase_order) - 1:
             next_phase = phase_order[current_index + 1]
             game_state.current_phase = next_phase.value
+            player_states = None
+            is_turn_change = False
         else:
             player_states = self.player_game_state_repo.get_by_game_state(game_state.id)
             current_player_state = next((p for p in player_states if p.user_id == game_state.active_player_id), None)
@@ -975,8 +1057,27 @@ class GameService:
                     
                     for p in player_states:
                         p.is_active = (p.user_id == next_player_state.user_id)
+            
+            next_phase = TurnPhase(game_state.current_phase)
+            is_turn_change = True
         
         self.game_state_repo.db.commit()
+        
+        if self.game_log_repo:
+            if is_turn_change:
+                self.game_log_repo.create_log(
+                    game_id=game_state.id,
+                    player_id=current_user.id,
+                    action_type="turn_change",
+                    message=f"→ Turn {game_state.current_turn} - {next_phase.value.replace('_', ' ').title()}"
+                )
+            else:
+                self.game_log_repo.create_log(
+                    game_id=game_state.id,
+                    player_id=current_user.id,
+                    action_type="phase_change",
+                    message=f"{current_user.username} passed priority → {next_phase.value.replace('_', ' ').title()}"
+                )
         
         return await self.get_game_state(game_id, current_user)
 
@@ -1019,6 +1120,14 @@ class GameService:
         
         self.game_card_repo.db.commit()
         
+        if self.game_log_repo:
+            self.game_log_repo.create_log(
+                game_id=game_state.id,
+                player_id=current_user.id,
+                action_type="untap_all",
+                message=f"{current_user.username} untaps all"
+            )
+        
         return await self.get_game_state(game_id, current_user)
     
     async def adjust_life(
@@ -1057,7 +1166,40 @@ class GameService:
         
         self.player_game_state_repo.db.commit()
         
+        if self.game_log_repo:
+            if amount > 0:
+                message = f"{current_user.username} gained {amount} life"
+            else:
+                message = f"{current_user.username} lost {abs(amount)} life"
+            self.game_log_repo.create_log(
+                game_id=game_state.id,
+                player_id=current_user.id,
+                action_type="adjust_life",
+                message=message
+            )
+        
         return await self.get_game_state(game_id, current_user)
+    
+    async def get_game_logs(
+        self,
+        game_id: int,
+        limit: int = 50
+    ) -> List[GameLogResponse]:
+        game = self._get_game_or_404(game_id)
+        
+        game_state = self.game_state_repo.get_by_game_room_id(game_id)
+        if not game_state:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Game state not found"
+            )
+        
+        if not self.game_log_repo:
+            return []
+        
+        logs = self.game_log_repo.get_game_logs(game_state.id, limit)
+        
+        return [GameLogResponse.model_validate(log) for log in logs]
     
     async def select_deck(
         self,

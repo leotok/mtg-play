@@ -1,6 +1,6 @@
 from typing import Optional, List
 from sqlalchemy.orm import Session
-from app.models.game_state import GameState, PlayerGameState, GameCard
+from app.models.game_state import GameState, PlayerGameState, GameCard, GameLog
 from app.models.game import CardZone
 from app.repositories.base import BaseRepository
 import random
@@ -179,3 +179,43 @@ class GameCardRepository(BaseRepository[GameCard]):
         self.db.commit()
         self.db.refresh(card)
         return card
+
+
+class GameLogRepository(BaseRepository[GameLog]):
+    """Repository for GameLog model operations"""
+    
+    def __init__(self, db: Session):
+        super().__init__(db, GameLog)
+    
+    def create_log(
+        self,
+        game_id: int,
+        player_id: int,
+        action_type: str,
+        message: str,
+        card_id: Optional[int] = None,
+        card_name: Optional[str] = None,
+        from_zone: Optional[str] = None,
+        to_zone: Optional[str] = None,
+    ) -> GameLog:
+        """Create a game log entry"""
+        log_entry = GameLog(
+            game_id=game_id,
+            player_id=player_id,
+            action_type=action_type,
+            message=message,
+            card_id=card_id,
+            card_name=card_name,
+            from_zone=from_zone,
+            to_zone=to_zone,
+        )
+        self.db.add(log_entry)
+        self.db.commit()
+        self.db.refresh(log_entry)
+        return log_entry
+    
+    def get_game_logs(self, game_id: int, limit: int = 50) -> List[GameLog]:
+        """Get game logs ordered by most recent first"""
+        return self.db.query(GameLog).filter(
+            GameLog.game_id == game_id
+        ).order_by(GameLog.created_at.desc()).limit(limit).all()

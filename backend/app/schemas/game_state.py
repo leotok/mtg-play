@@ -4,6 +4,21 @@ from datetime import datetime
 from app.models.game import TurnPhase, CardZone
 
 
+class GameLogResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    game_id: int
+    player_id: int
+    action_type: str
+    card_id: Optional[int] = None
+    card_name: Optional[str] = None
+    from_zone: Optional[str] = None
+    to_zone: Optional[str] = None
+    message: str
+    created_at: datetime
+
+
 class GameCardResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -83,6 +98,7 @@ class GameStateResponse(BaseModel):
     starting_player_id: int
     players: List[PlayerGameStateResponse]
     created_at: datetime
+    logs: Optional[List[GameLogResponse]] = []
 
 
 class DrawCardRequest(BaseModel):

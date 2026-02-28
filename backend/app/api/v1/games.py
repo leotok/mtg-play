@@ -20,6 +20,7 @@ from app.schemas.game_state import (
     TapCardRequest,
     BattlefieldPositionRequest,
     AdjustLifeRequest,
+    GameLogResponse,
 )
 from app.services.game_service import get_game_service, GameService
 from app.socket import get_sio
@@ -373,3 +374,14 @@ async def adjust_life(
 ):
     """Adjust the current player's life total"""
     return await game_service.adjust_life(game_id, request.amount, current_user)
+
+
+@router.get("/{game_id}/logs", response_model=List[GameLogResponse])
+async def get_game_logs(
+    game_id: int,
+    limit: int = 50,
+    current_user: User = Depends(get_current_user),
+    game_service: GameService = Depends(get_game_service)
+):
+    """Get game log entries"""
+    return await game_service.get_game_logs(game_id, limit)

@@ -1,14 +1,16 @@
 import { create } from 'zustand';
 import { apiClient } from '../services/apiClient';
-import type { GameState } from '../types/gameState';
+import type { GameState, GameLog } from '../types/gameState';
 
 interface GameStateStore {
   gameState: GameState | null;
+  gameLogs: GameLog[];
   isLoading: boolean;
   error: string | null;
   gameId: number | null;
   
   fetchGameState: (gameId: number) => Promise<void>;
+  fetchGameLogs: (gameId: number) => Promise<void>;
   drawCard: (gameId: number) => Promise<void>;
   untapAll: (gameId: number) => Promise<void>;
   playCard: (gameId: number, cardId: number, battlefieldX?: number, battlefieldY?: number) => Promise<void>;
@@ -24,6 +26,7 @@ interface GameStateStore {
 
 export const useGameStateStore = create<GameStateStore>((set) => ({
   gameState: null,
+  gameLogs: [],
   isLoading: false,
   error: null,
   gameId: null,
@@ -40,6 +43,15 @@ export const useGameStateStore = create<GameStateStore>((set) => ({
         error: err.response?.data?.detail || 'Failed to fetch game state', 
         isLoading: false 
       });
+    }
+  },
+
+  fetchGameLogs: async (gameId: number) => {
+    try {
+      const response = await apiClient.get<GameLog[]>(`/games/${gameId}/logs`);
+      set({ gameLogs: response });
+    } catch (err: any) {
+      console.error('Failed to fetch game logs:', err);
     }
   },
 
