@@ -47,7 +47,7 @@ export const PlayerZone: React.FC<{
 
   return (
     <div 
-      className={`p-2 pb-0 rounded-lg flex-1 flex flex-col relative ${isActive ? 'bg-yellow-900/30 border-2 border-yellow-500' : 'bg-gray-800/50 border border-gray-700'}`} 
+      className={`p-2 pb-0 overflow-hidden rounded-lg flex-1 flex flex-col relative ${isActive ? 'bg-yellow-900/30 border-2 border-yellow-500' : 'bg-gray-800/50 border border-gray-700'}`} 
       style={{backgroundColor}}
     >
       
@@ -65,7 +65,7 @@ export const PlayerZone: React.FC<{
         selectedCardIds={selectedCardIds}
       />
 
-      <div className="h-auto flex gap-2 items-end w-full min-w-0">
+      <div className="h-auto flex gap-2 items-end w-full min-w-0 overflow-hidden">
         <HandCards
           player={player}
           isCurrentUser={isCurrentUser}

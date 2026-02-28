@@ -65,11 +65,7 @@ export const Battlefield: React.FC<{
                     </div>
                 );
                 })}
-                {player.battlefield.length === 0 && (
-                <div className="absolute inset-0 flex items-center justify-center text-gray-600 text-xs">
-                    Drop cards here
-                </div>
-                )}
+                
             </div>
         </div>
     )

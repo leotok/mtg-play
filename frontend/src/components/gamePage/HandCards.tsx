@@ -67,7 +67,7 @@ export const HandCards: React.FC<{
     if (isCurrentUser) {
         return (
             <div 
-                className={`flex justify-center gap-1 p-1 rounded transition-colors overflow-hidden flex-auto max-w-[58%] ${
+                className={`flex justify-center gap-1 p-1 rounded transition-colors overflow-y-visible flex-auto max-w-[58%] ${
                     hoveredZone === 'hand' ? 'bg-yellow-900/50 border-none' : ''
                 }`}
 
@@ -97,7 +97,7 @@ export const HandCards: React.FC<{
         )
     }
     return (
-        <div className="overflow-hidden flex-auto max-w-[58%]">
+        <div className="overflow-y-visible flex-auto max-w-[58%]">
             <div 
                 ref={opponentContainerRef}
                 className="flex justify-center gap-1 p-1 rounded transition-colors" 
