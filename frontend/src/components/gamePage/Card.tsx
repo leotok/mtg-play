@@ -124,7 +124,7 @@ export const Card: React.FC<{
       className={`
         flex items-center justify-center select-none min-w-fit
         transition-all duration-200
-        ${isDragging ? 'z-50' : ''}
+        ${isDragging ? 'z-500' : ''}
         ${hidden ? 'display-none' : ''}
       `}
       style={{...scaleStyle, zIndex: idx, position: 'relative', left, top: cardTop, width: cardWidth, height: cardHeight, pointerEvents: 'all', borderRadius: '8px'}}

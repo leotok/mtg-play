@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { apiClient } from '../../services/apiClient';
-import type { PowerBracket, GameRoom, GameRoomCreate } from '../../types/game';
-import { POWER_BRACKET_LABELS } from '../../types/game';
+import type { PowerBracket, GameMode, GameRoom, GameRoomCreate } from '../../types/game';
+import { POWER_BRACKET_LABELS, GAME_MODE_LABELS } from '../../types/game';
 
 interface CreateGameModalProps {
   isOpen: boolean;
@@ -15,6 +15,7 @@ const CreateGameModal: React.FC<CreateGameModalProps> = ({ isOpen, onClose, onGa
   const [description, setDescription] = useState('');
   const [maxPlayers, setMaxPlayers] = useState(4);
   const [powerBracket, setPowerBracket] = useState<PowerBracket>('casual');
+  const [gameMode, setGameMode] = useState<GameMode>('manual');
   const [isPublic, setIsPublic] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -36,6 +37,7 @@ const CreateGameModal: React.FC<CreateGameModalProps> = ({ isOpen, onClose, onGa
         description: description.trim() || undefined,
         max_players: maxPlayers,
         power_bracket: powerBracket,
+        game_mode: gameMode,
         is_public: isPublic,
       };
 
@@ -54,6 +56,7 @@ const CreateGameModal: React.FC<CreateGameModalProps> = ({ isOpen, onClose, onGa
     setDescription('');
     setMaxPlayers(4);
     setPowerBracket('casual');
+    setGameMode('manual');
     setIsPublic(false);
     setError('');
     onClose();
@@ -159,6 +162,35 @@ const CreateGameModal: React.FC<CreateGameModalProps> = ({ isOpen, onClose, onGa
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Game Mode */}
+            <div>
+              <label className="block text-sm font-medium text-gray-100 mb-2">
+                Game Mode
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {(['manual', 'rules_enforced'] as GameMode[]).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setGameMode(mode)}
+                    className={`py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      gameMode === mode
+                        ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                        : 'bg-gray-700 text-gray-300 border border-gray-600 hover:border-gray-500'
+                    }`}
+                  >
+                    {GAME_MODE_LABELS[mode]}
+                  </button>
+                ))}
+              </div>
+              <p className="text-gray-400 text-xs mt-1">
+                {gameMode === 'manual' 
+                  ? 'Free-form play - no rules enforcement'
+                  : 'Magic rules enforced by the game engine'
+                }
+              </p>
             </div>
 
             {/* Public/Private Toggle */}

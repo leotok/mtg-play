@@ -92,6 +92,7 @@ export const PlayerZone: React.FC<{
             isCurrentUser={isCurrentUser}
             onMouseDownCommander={onMouseDownCommander}
             onHoverCard={onHoverCard}
+            dragState={dragState ?? null}
           />
 
           <Graveyard
@@ -101,6 +102,7 @@ export const PlayerZone: React.FC<{
             isCurrentUser={isCurrentUser}
             onMouseDownGraveyard={onMouseDownGraveyard}
             onHoverCard={onHoverCard}
+            dragState={dragState ?? null}
           />
 
           <Exile 
@@ -110,6 +112,7 @@ export const PlayerZone: React.FC<{
             isCurrentUser={isCurrentUser}
             onMouseDownExile={onMouseDownExile}
             onHoverCard={onHoverCard}
+            dragState={dragState ?? null}
           />
 
           <Library player={player} />

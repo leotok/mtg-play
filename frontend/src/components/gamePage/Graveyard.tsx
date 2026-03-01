@@ -11,8 +11,13 @@ export const Graveyard: React.FC<{
     isCurrentUser: boolean;
     onMouseDownGraveyard?: (card: GameCard, e: React.MouseEvent) => void;
     onHoverCard?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null) => void;
+    dragState?: {
+        isDragging: boolean;
+        cardId: number;
+        sourceZone: CardZone;
+    } | null;
     className?: string;
-}> = ({ player, graveyardRef, hoveredZone, isCurrentUser, onMouseDownGraveyard, onHoverCard, className = '' }) => {
+}> = ({ player, graveyardRef, hoveredZone, isCurrentUser, onMouseDownGraveyard, onHoverCard, dragState, className = '' }) => {
     const cardHeight = useSettingsStore(state => state.getCardHeight());
     const cardWidth = useSettingsStore(state => state.getCardWidth());
     
@@ -28,18 +33,46 @@ export const Graveyard: React.FC<{
                 Grave ({player.graveyard.length})
             </span>
             <div className="flex -mt-8 justify-end">
-                {player.graveyard.length == 0 && (
+                {player.graveyard.length > 0 && (
+                    <>
+                        {(() => {
+                            const topCard = player.graveyard[player.graveyard.length - 1];
+                            const isDraggingTop = dragState?.isDragging && dragState?.cardId === topCard.id;
+                            
+                            if (isDraggingTop && player.graveyard.length > 1) {
+                                const cardBelow = player.graveyard[player.graveyard.length - 2];
+                                return (
+                                    <Card 
+                                        key={cardBelow.id} 
+                                        card={cardBelow} 
+                                        size="sm"
+                                        onMouseDown={isCurrentUser ? (e) => onMouseDownGraveyard?.(cardBelow, e) : undefined}
+                                        onHover={onHoverCard}
+                                    />
+                                );
+                            }
+                            
+                            if (isDraggingTop) {
+                                return (
+                                    <div className="border-dashed border-2 border-gray-500 rounded" style={{width: cardWidth, height: cardHeight}}></div>
+                                );
+                            }
+                            
+                            return (
+                                <Card 
+                                    key={topCard.id} 
+                                    card={topCard} 
+                                    size="sm"
+                                    onMouseDown={isCurrentUser ? (e) => onMouseDownGraveyard?.(topCard, e) : undefined}
+                                    onHover={onHoverCard}
+                                />
+                            );
+                        })()}
+                    </>
+                )}
+                {player.graveyard.length === 0 && (
                     <div className="border-dashed border-2 border-gray-500 rounded" style={{width: cardWidth, height: cardHeight}}></div>
                 )}
-                {player.graveyard.slice(-1).map((card) => (
-                    <Card 
-                        key={card.id} 
-                        card={card} 
-                        size="sm"
-                        onMouseDown={isCurrentUser ? (e) => onMouseDownGraveyard?.(card, e) : undefined}
-                        onHover={onHoverCard}
-                    />
-                ))}
             </div>
         </div>
     );

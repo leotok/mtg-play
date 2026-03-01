@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from fastapi import Depends, HTTPException, status
 from app.core.database import get_db
 from app.models.user import User
-from app.models.game import GameRoom, GameRoomPlayer, GameStatus, PlayerStatus, TurnPhase, CardZone
+from app.models.game import GameRoom, GameRoomPlayer, GameStatus, PlayerStatus, TurnPhase, CardZone, GameMode
 from app.models.game_state import GameState, PlayerGameState, GameCard
 from app.repositories.game import GameRoomRepository, GameRoomPlayerRepository
 from app.repositories import DeckRepository
@@ -25,6 +25,8 @@ from app.schemas.game_state import (
     GameLogResponse,
 )
 from app.services.scryfall import get_scryfall_service
+from app.engine.game_engine import GameEngine, create_engine_from_db, sync_engine_to_db
+from app.engine.models import CardZone as EngineCardZone
 import logging
 import secrets
 import string
@@ -90,6 +92,28 @@ class GameService:
             code = ''.join(secrets.choice(chars) for _ in range(8))
         return code
     
+    def _use_engine(self, game: GameRoom) -> bool:
+        return game.game_mode == GameMode.RULES_ENFORCED
+    
+    def _get_cards_by_player(self, player_states):
+        cards_by_player = {}
+        for ps in player_states:
+            player_id = ps.user_id
+            cards_by_player[player_id] = {
+                "library": self.game_card_repo.get_player_cards_in_zone(ps.id, CardZone.LIBRARY),
+                "hand": self.game_card_repo.get_player_cards_in_zone(ps.id, CardZone.HAND),
+                "battlefield": self.game_card_repo.get_player_cards_in_zone(ps.id, CardZone.BATTLEFIELD),
+                "graveyard": self.game_card_repo.get_player_cards_in_zone(ps.id, CardZone.GRAVEYARD),
+                "exile": self.game_card_repo.get_player_cards_in_zone(ps.id, CardZone.EXILE),
+                "commander": self.game_card_repo.get_player_cards_in_zone(ps.id, CardZone.COMMANDER),
+            }
+        return cards_by_player
+    
+    def _get_usernames(self, player_states):
+        user_ids = [ps.user_id for ps in player_states]
+        users = self.game_state_repo.db.query(User).filter(User.id.in_(user_ids)).all()
+        return {u.id: u.username for u in users}
+    
     async def create_game(
         self,
         game_data: GameRoomCreate,
@@ -105,6 +129,7 @@ class GameService:
             "is_public": game_data.is_public,
             "max_players": game_data.max_players,
             "power_bracket": game_data.power_bracket,
+            "game_mode": game_data.game_mode,
             "status": GameStatus.WAITING,
         })
         
@@ -139,6 +164,7 @@ class GameService:
                 max_players=game.max_players,
                 current_players=current_players,
                 power_bracket=game.power_bracket,
+                game_mode=game.game_mode,
                 status=game.status,
                 created_at=game.created_at,
                 is_in_game=is_in_game,
@@ -614,15 +640,35 @@ class GameService:
                 detail="You are not in this game"
             )
         
-        self.game_card_repo.draw_cards(player_state.id, 1)
         
-        if self.game_log_repo:
-            self.game_log_repo.create_log(
-                game_id=game_state.id,
-                player_id=current_user.id,
-                action_type="draw",
-                message=f"{current_user.username} drew a card"
-            )
+        if self._use_engine(game):
+            player_states = self.player_game_state_repo.get_by_game_state(game_state.id)
+            cards_by_player = self._get_cards_by_player(player_states)
+            usernames = self._get_usernames(player_states)
+            
+            engine = create_engine_from_db(game_state, player_states, cards_by_player, usernames)
+            
+            result = engine.draw_cards(player_state.user_id, 1)
+            
+            sync_engine_to_db(engine, self.game_state_repo.db)
+            
+            if self.game_log_repo:
+                self.game_log_repo.create_log(
+                    game_id=game_state.id,
+                    player_id=current_user.id,
+                    action_type="draw",
+                    message=f"{current_user.username} drew a card"
+                )
+        else:
+            self.game_card_repo.draw_cards(player_state.id, 1)
+            
+            if self.game_log_repo:
+                self.game_log_repo.create_log(
+                    game_id=game_state.id,
+                    player_id=current_user.id,
+                    action_type="draw",
+                    message=f"{current_user.username} drew a card"
+                )
         
         return await self.get_game_state(game_id, current_user)
     
@@ -1018,66 +1064,93 @@ class GameService:
                 detail="Only the active player can pass priority"
             )
         
-        phase_order = [
-            TurnPhase.UNTAP,
-            TurnPhase.UPKEEP,
-            TurnPhase.DRAW,
-            TurnPhase.MAIN1,
-            TurnPhase.COMBAT_START,
-            TurnPhase.COMBAT_ATTACK,
-            TurnPhase.COMBAT_BLOCK,
-            TurnPhase.COMBAT_DAMAGE,
-            TurnPhase.COMBAT_END,
-            TurnPhase.MAIN2,
-            TurnPhase.END,
-            TurnPhase.CLEANUP,
-        ]
-        
-        current_phase = TurnPhase(game_state.current_phase)
-        current_index = phase_order.index(current_phase)
-        
-        if current_index < len(phase_order) - 1:
-            next_phase = phase_order[current_index + 1]
-            game_state.current_phase = next_phase.value
-            player_states = None
-            is_turn_change = False
-        else:
+        if self._use_engine(game):
             player_states = self.player_game_state_repo.get_by_game_state(game_state.id)
-            current_player_state = next((p for p in player_states if p.user_id == game_state.active_player_id), None)
+            cards_by_player = self._get_cards_by_player(player_states)
+            usernames = self._get_usernames(player_states)
             
-            if current_player_state:
-                current_order = current_player_state.player_order
-                next_order = (current_order + 1) % len(player_states)
-                next_player_state = next((p for p in player_states if p.player_order == next_order), None)
-                
-                if next_player_state:
-                    game_state.active_player_id = next_player_state.user_id
-                    game_state.current_turn += 1
-                    game_state.current_phase = TurnPhase.UNTAP.value
-                    
-                    for p in player_states:
-                        p.is_active = (p.user_id == next_player_state.user_id)
+            engine = create_engine_from_db(game_state, player_states, cards_by_player, usernames)
             
-            next_phase = TurnPhase(game_state.current_phase)
-            is_turn_change = True
-        
-        self.game_state_repo.db.commit()
-        
-        if self.game_log_repo:
-            if is_turn_change:
-                self.game_log_repo.create_log(
-                    game_id=game_state.id,
-                    player_id=current_user.id,
-                    action_type="turn_change",
-                    message=f"→ Turn {game_state.current_turn} - {next_phase.value.replace('_', ' ').title()}"
-                )
+            result = engine.pass_priority()
+            
+            sync_engine_to_db(engine, self.game_state_repo.db)
+            
+            if self.game_log_repo:
+                if result.turn_changed:
+                    self.game_log_repo.create_log(
+                        game_id=game_state.id,
+                        player_id=current_user.id,
+                        action_type="turn_change",
+                        message=f"→ Turn {engine.game_state.current_turn} - {engine.game_state.current_phase.value.replace('_', ' ').title()}"
+                    )
+                else:
+                    self.game_log_repo.create_log(
+                        game_id=game_state.id,
+                        player_id=current_user.id,
+                        action_type="phase_change",
+                        message=f"{current_user.username} passed priority → {engine.game_state.current_phase.value.replace('_', ' ').title()}"
+                    )
+        else:
+            phase_order = [
+                TurnPhase.UNTAP,
+                TurnPhase.UPKEEP,
+                TurnPhase.DRAW,
+                TurnPhase.MAIN1,
+                TurnPhase.COMBAT_START,
+                TurnPhase.COMBAT_ATTACK,
+                TurnPhase.COMBAT_BLOCK,
+                TurnPhase.COMBAT_DAMAGE,
+                TurnPhase.COMBAT_END,
+                TurnPhase.MAIN2,
+                TurnPhase.END,
+                TurnPhase.CLEANUP,
+            ]
+            
+            current_phase = TurnPhase(game_state.current_phase)
+            current_index = phase_order.index(current_phase)
+            
+            if current_index < len(phase_order) - 1:
+                next_phase = phase_order[current_index + 1]
+                game_state.current_phase = next_phase.value
+                player_states = None
+                is_turn_change = False
             else:
-                self.game_log_repo.create_log(
-                    game_id=game_state.id,
-                    player_id=current_user.id,
-                    action_type="phase_change",
-                    message=f"{current_user.username} passed priority → {next_phase.value.replace('_', ' ').title()}"
-                )
+                player_states = self.player_game_state_repo.get_by_game_state(game_state.id)
+                current_player_state = next((p for p in player_states if p.user_id == game_state.active_player_id), None)
+                
+                if current_player_state:
+                    current_order = current_player_state.player_order
+                    next_order = (current_order + 1) % len(player_states)
+                    next_player_state = next((p for p in player_states if p.player_order == next_order), None)
+                    
+                    if next_player_state:
+                        game_state.active_player_id = next_player_state.user_id
+                        game_state.current_turn += 1
+                        game_state.current_phase = TurnPhase.UNTAP.value
+                        
+                        for p in player_states:
+                            p.is_active = (p.user_id == next_player_state.user_id)
+                
+                next_phase = TurnPhase(game_state.current_phase)
+                is_turn_change = True
+            
+            self.game_state_repo.db.commit()
+            
+            if self.game_log_repo:
+                if is_turn_change:
+                    self.game_log_repo.create_log(
+                        game_id=game_state.id,
+                        player_id=current_user.id,
+                        action_type="turn_change",
+                        message=f"→ Turn {game_state.current_turn} - {next_phase.value.replace('_', ' ').title()}"
+                    )
+                else:
+                    self.game_log_repo.create_log(
+                        game_id=game_state.id,
+                        player_id=current_user.id,
+                        action_type="phase_change",
+                        message=f"{current_user.username} passed priority → {next_phase.value.replace('_', ' ').title()}"
+                    )
         
         return await self.get_game_state(game_id, current_user)
 
@@ -1289,6 +1362,7 @@ class GameService:
             is_public=game.is_public,
             max_players=game.max_players,
             power_bracket=game.power_bracket,
+            game_mode=game.game_mode,
             status=game.status,
             players=player_responses,
             created_at=game.created_at,

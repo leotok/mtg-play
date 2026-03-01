@@ -13,6 +13,11 @@ class PowerBracket(str, enum.Enum):
     CEDH = "cedh"
 
 
+class GameMode(str, enum.Enum):
+    RULES_ENFORCED = "rules_enforced"
+    MANUAL = "manual"
+
+
 class GameStatus(str, enum.Enum):
     WAITING = "waiting"
     IN_PROGRESS = "in_progress"
@@ -60,6 +65,7 @@ class GameRoom(Base):
     is_public: Mapped[bool] = mapped_column(Boolean, default=False)
     max_players: Mapped[int] = mapped_column(Integer, nullable=False, default=4)
     power_bracket: Mapped[PowerBracket] = mapped_column(SQLEnum(PowerBracket), nullable=False, default=PowerBracket.CASUAL)
+    game_mode: Mapped[GameMode] = mapped_column(SQLEnum(GameMode), nullable=False, default=GameMode.MANUAL)
     status: Mapped[GameStatus] = mapped_column(SQLEnum(GameStatus), nullable=False, default=GameStatus.WAITING)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), onupdate=func.now(), nullable=True)

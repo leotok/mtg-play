@@ -18,9 +18,9 @@ import PageHeader from '../components/common/PageHeader';
 import { apiClient } from '../services/apiClient';
 import { socketService } from '../services/socket';
 import { useAuth } from '../context/AuthContext';
-import type { GameRoom, PowerBracket, PlayerStatus, DeckInfo } from '../types/game';
+import type { GameRoom, PowerBracket, PlayerStatus, DeckInfo, GameMode } from '../types/game';
 import type { Deck } from '../types/deck';
-import { POWER_BRACKET_LABELS, POWER_BRACKET_COLORS } from '../types/game';
+import { POWER_BRACKET_LABELS, POWER_BRACKET_COLORS, GAME_MODE_LABELS, GAME_MODE_COLORS } from '../types/game';
 
 const GameRoomPage: React.FC = () => {
   const { gameId } = useParams<{ gameId: string }>();
@@ -264,6 +264,9 @@ const GameRoomPage: React.FC = () => {
           <div className="flex items-center gap-4 text-sm">
             <span className={`px-2 py-1 rounded border ${POWER_BRACKET_COLORS[game.power_bracket as PowerBracket]}`}>
               {POWER_BRACKET_LABELS[game.power_bracket as PowerBracket]}
+            </span>
+            <span className={`px-2 py-1 rounded border ${GAME_MODE_COLORS[game.game_mode as GameMode]}`}>
+              {GAME_MODE_LABELS[game.game_mode as GameMode]}
             </span>
             <div className="flex items-center gap-1 text-gray-400">
               <UserGroupIcon className="h-4 w-4" />

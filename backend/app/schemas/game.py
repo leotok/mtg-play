@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 from datetime import datetime
-from app.models.game import PowerBracket, GameStatus, PlayerStatus
+from app.models.game import PowerBracket, GameStatus, PlayerStatus, GameMode
 
 
 class DeckInfo(BaseModel):
@@ -19,6 +19,7 @@ class GameRoomCreate(BaseModel):
     is_public: bool = False
     max_players: int = Field(default=4, ge=2, le=4)
     power_bracket: PowerBracket = PowerBracket.CASUAL
+    game_mode: GameMode = GameMode.MANUAL
 
 
 class GameRoomUpdate(BaseModel):
@@ -58,6 +59,7 @@ class GameRoomResponse(BaseModel):
     is_public: bool
     max_players: int
     power_bracket: PowerBracket
+    game_mode: GameMode
     status: GameStatus
     players: List[GameRoomPlayerResponse]
     created_at: datetime
@@ -74,6 +76,7 @@ class GameRoomListItem(BaseModel):
     max_players: int
     current_players: int
     power_bracket: PowerBracket
+    game_mode: GameMode
     status: GameStatus
     created_at: datetime
     is_in_game: bool = False

@@ -6,8 +6,8 @@ import CreateGameModal from '../components/game/CreateGameModal';
 import { apiClient } from '../services/apiClient';
 import { socketService } from '../services/socket';
 import { useAuth } from '../context/AuthContext';
-import type { GameRoomListItem, GameRoom, PowerBracket } from '../types/game';
-import { POWER_BRACKET_LABELS, POWER_BRACKET_COLORS } from '../types/game';
+import type { GameRoomListItem, GameRoom, PowerBracket, GameMode } from '../types/game';
+import { POWER_BRACKET_LABELS, POWER_BRACKET_COLORS, GAME_MODE_LABELS, GAME_MODE_COLORS } from '../types/game';
 
 const Playground: React.FC = () => {
   const navigate = useNavigate();
@@ -137,6 +137,9 @@ const Playground: React.FC = () => {
           </div>
           <span className={`text-xs px-2 py-0.5 rounded border ${POWER_BRACKET_COLORS[game.power_bracket as PowerBracket]}`}>
             {POWER_BRACKET_LABELS[game.power_bracket as PowerBracket]}
+          </span>
+          <span className={`text-xs px-2 py-0.5 rounded border ${GAME_MODE_COLORS[game.game_mode as GameMode]}`}>
+            {GAME_MODE_LABELS[game.game_mode as GameMode]}
           </span>
         </div>
 

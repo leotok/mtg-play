@@ -153,13 +153,16 @@ uv run alembic downgrade -1
 - ✅ Game lobby
 - ✅ Game board UI with drag-and-drop
 - ✅ Card multi-selection drag-and-drop
-- Game action logs
+- ✅ Game action logs
 - Use socket.io for real-time game state synchronization during gameplay
 
 ### Phase 2: Game Complexity
-- Move validation
 - Mana system
-- Stack system and targeting
+- Stack system
+- Priority and turn/phases order system
+- Targeting
+- Move validation
+- Combat system
 - Complex abilities (keywords, activated/triggered)
 - Commander damage rules
 - AI opponent
