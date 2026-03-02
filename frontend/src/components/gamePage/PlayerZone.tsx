@@ -65,7 +65,7 @@ export const PlayerZone: React.FC<{
         selectedCardIds={selectedCardIds}
       />
 
-      <div className="h-auto flex gap-2 items-end w-full min-w-0 overflow-hidden">
+      <div className="h-auto flex gap-2 items-end w-full min-w-0 overflow-y-visible">
         <HandCards
           player={player}
           isCurrentUser={isCurrentUser}

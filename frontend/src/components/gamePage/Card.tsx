@@ -92,7 +92,13 @@ export const Card: React.FC<{
   };
 
   const left = handIndex * horizontalOffset;
-  const cardTop = top;
+
+  let cardTop = top;
+  let zIndex = idx;
+
+  if (isHovered) {
+    cardTop = -15;
+  }
 
   const cardRotation = card.is_tapped ? 90 : rotation;
   const hoverScale = isHovered && inHand ? 1.05 : 1;
@@ -127,7 +133,7 @@ export const Card: React.FC<{
         ${isDragging ? 'z-500' : ''}
         ${hidden ? 'display-none' : ''}
       `}
-      style={{...scaleStyle, zIndex: idx, position: 'relative', left, top: cardTop, width: cardWidth, height: cardHeight, pointerEvents: 'all', borderRadius: '8px'}}
+      style={{...scaleStyle, zIndex: zIndex, position: 'relative', left, top: cardTop, width: cardWidth, height: cardHeight, pointerEvents: 'all', borderRadius: '8px'}}
     >
       {hidden ? (
         <img 
