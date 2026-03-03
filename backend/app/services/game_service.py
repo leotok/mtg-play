@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from fastapi import Depends, HTTPException, status
 from app.core.database import get_db
 from app.models.user import User
-from app.models.game import GameRoom, GameRoomPlayer, GameStatus, PlayerStatus, TurnPhase, CardZone, GameMode
+from app.models.game import GameRoom, GameStatus, PlayerStatus, TurnPhase, CardZone, GameMode
 from app.models.game_state import GameState, PlayerGameState, GameCard
 from app.repositories.game import GameRoomRepository, GameRoomPlayerRepository
 from app.repositories import DeckRepository
@@ -25,8 +25,8 @@ from app.schemas.game_state import (
     GameLogResponse,
 )
 from app.services.scryfall import get_scryfall_service
-from app.engine.game_engine import GameEngine, create_engine_from_db, sync_engine_to_db
-from app.engine.models import CardZone as EngineCardZone
+from app.engine.game_engine import create_engine_from_db, sync_engine_to_db
+from app.engine.models import MoveCardInput, ManaColor
 import logging
 import secrets
 import string
@@ -648,7 +648,7 @@ class GameService:
             
             engine = create_engine_from_db(game_state, player_states, cards_by_player, usernames)
             
-            result = engine.draw_cards(player_state.user_id, 1)
+            engine.draw_cards(player_state.user_id, 1)
             
             sync_engine_to_db(engine, self.game_state_repo.db)
             
@@ -681,6 +681,7 @@ class GameService:
         position: int = 0,
         battlefield_x: Optional[float] = None,
         battlefield_y: Optional[float] = None,
+        side_index: Optional[int] = None,
     ) -> GameStateResponse:
         game = self._get_game_or_404(game_id)
         
@@ -719,40 +720,65 @@ class GameService:
                 detail="This card is not yours"
             )
         
-        if card.zone not in [CardZone.HAND.value, CardZone.COMMANDER.value]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Card is not in hand or commander"
+        if self._use_engine(game):
+            player_states = self.player_game_state_repo.get_by_game_state(game_state.id)
+            cards_by_player = self._get_cards_by_player(player_states)
+            usernames = self._get_usernames(player_states)
+            
+            engine = create_engine_from_db(game_state, player_states, cards_by_player, usernames)
+            
+            from_zone = card.zone
+            
+            engine.play_card(
+                card_id,
+                target_zone,
+                position,
+                battlefield_x,
+                battlefield_y,
+                side_index
             )
-        
-        hand_cards = self.game_card_repo.get_player_cards_in_zone(player_state.id, CardZone.HAND)
-        zone_cards = self.game_card_repo.get_player_cards_in_zone(player_state.id, target_zone)
-        if zone_cards:
-            max_position = sorted(zone_cards, key=lambda card: card.position if card else 1)[-1].position
+            
+            sync_engine_to_db(engine, self.game_state_repo.db)
+            
+            if self.game_log_repo:
+                self.game_log_repo.create_log(
+                    game_id=game_state.id,
+                    player_id=current_user.id,
+                    action_type="play",
+                    message=f"{current_user.username} played {card.card_name} from {from_zone}",
+                    card_id=card.id,
+                    card_name=card.card_name,
+                    from_zone=from_zone,
+                    to_zone=target_zone.value
+                )
         else:
-            max_position = 1
-        
-        from_zone = card.zone
-        
-        self.game_card_repo.move_card(
-            card_id, 
-            target_zone, 
-            max_position + 1,
-            battlefield_x=battlefield_x,
-            battlefield_y=battlefield_y
-        )
-        
-        if self.game_log_repo:
-            self.game_log_repo.create_log(
-                game_id=game_state.id,
-                player_id=current_user.id,
-                action_type="play",
-                message=f"{current_user.username} played {card.card_name} from {from_zone}",
-                card_id=card.id,
-                card_name=card.card_name,
-                from_zone=from_zone,
-                to_zone=target_zone.value
+            zone_cards = self.game_card_repo.get_player_cards_in_zone(player_state.id, target_zone)
+            if zone_cards:
+                max_position = sorted(zone_cards, key=lambda c: c.position if c else 1)[-1].position
+            else:
+                max_position = 1
+            
+            from_zone = card.zone
+            
+            self.game_card_repo.move_card(
+                card_id, 
+                target_zone, 
+                max_position + 1,
+                battlefield_x=battlefield_x,
+                battlefield_y=battlefield_y
             )
+            
+            if self.game_log_repo:
+                self.game_log_repo.create_log(
+                    game_id=game_state.id,
+                    player_id=current_user.id,
+                    action_type="play",
+                    message=f"{current_user.username} played {card.card_name} from {from_zone}",
+                    card_id=card.id,
+                    card_name=card.card_name,
+                    from_zone=from_zone,
+                    to_zone=target_zone.value
+                )
         
         return await self.get_game_state(game_id, current_user)
     
@@ -801,34 +827,63 @@ class GameService:
                 detail="This card is not yours"
             )
         
-        # For graveyard, exile, and battlefield, always append to end
-        if target_zone in (CardZone.GRAVEYARD, CardZone.EXILE, CardZone.BATTLEFIELD):
-            existing_cards = self.game_card_repo.get_player_cards_in_zone(
-                player_state.id, target_zone
+        if self._use_engine(game):
+            player_states = self.player_game_state_repo.get_by_game_state(game_state.id)
+            cards_by_player = self._get_cards_by_player(player_states)
+            usernames = self._get_usernames(player_states)
+            
+            engine = create_engine_from_db(game_state, player_states, cards_by_player, usernames)
+            
+            from_zone = card.zone
+            
+            engine.move_card(
+                card_id,
+                target_zone,
+                position,
+                None,
+                None
             )
-            position = len(existing_cards)
-        
-        from_zone = card.zone
-        
-        # Untap card when moving from battlefield to another zone
-        if card.zone == CardZone.BATTLEFIELD and target_zone != CardZone.BATTLEFIELD:
-            if card.is_tapped:
-                card.is_tapped = False
-                self.game_card_repo.db.commit()
-        
-        self.game_card_repo.move_card(card_id, target_zone, position)
-        
-        if self.game_log_repo:
-            self.game_log_repo.create_log(
-                game_id=game_state.id,
-                player_id=current_user.id,
-                action_type="move",
-                message=f"{current_user.username} moved {card.card_name} from {from_zone} to {target_zone.value}",
-                card_id=card.id,
-                card_name=card.card_name,
-                from_zone=from_zone,
-                to_zone=target_zone.value
-            )
+            
+            sync_engine_to_db(engine, self.game_state_repo.db)
+            
+            if self.game_log_repo:
+                self.game_log_repo.create_log(
+                    game_id=game_state.id,
+                    player_id=current_user.id,
+                    action_type="move",
+                    message=f"{current_user.username} moved {card.card_name} from {from_zone} to {target_zone.value}",
+                    card_id=card.id,
+                    card_name=card.card_name,
+                    from_zone=from_zone,
+                    to_zone=target_zone.value
+                )
+        else:
+            if target_zone in (CardZone.GRAVEYARD, CardZone.EXILE, CardZone.BATTLEFIELD):
+                existing_cards = self.game_card_repo.get_player_cards_in_zone(
+                    player_state.id, target_zone
+                )
+                position = len(existing_cards)
+            
+            from_zone = card.zone
+            
+            if card.zone == CardZone.BATTLEFIELD and target_zone != CardZone.BATTLEFIELD:
+                if card.is_tapped:
+                    card.is_tapped = False
+                    self.game_card_repo.db.commit()
+            
+            self.game_card_repo.move_card(card_id, target_zone, position)
+            
+            if self.game_log_repo:
+                self.game_log_repo.create_log(
+                    game_id=game_state.id,
+                    player_id=current_user.id,
+                    action_type="move",
+                    message=f"{current_user.username} moved {card.card_name} from {from_zone} to {target_zone.value}",
+                    card_id=card.id,
+                    card_name=card.card_name,
+                    from_zone=from_zone,
+                    to_zone=target_zone.value
+                )
         
         return await self.get_game_state(game_id, current_user)
     
@@ -862,55 +917,102 @@ class GameService:
                 detail="You are not in this game"
             )
         
-        for card_move in cards:
-            card_id = card_move.card_id
-            target_zone = card_move.target_zone
-            position = card_move.position
+        if self._use_engine(game):
+            player_states = self.player_game_state_repo.get_by_game_state(game_state.id)
+            cards_by_player = self._get_cards_by_player(player_states)
+            usernames = self._get_usernames(player_states)
             
-            card = self.game_card_repo.get_card_by_id(card_id)
-            if not card:
-                continue
+            engine = create_engine_from_db(game_state, player_states, cards_by_player, usernames)
             
-            if card.player_game_state_id != player_state.id:
-                continue
-            
-            from_zone = card.zone
-            
-            if target_zone in (CardZone.GRAVEYARD, CardZone.EXILE, CardZone.BATTLEFIELD):
-                existing_cards = self.game_card_repo.get_player_cards_in_zone(
-                    player_state.id, target_zone
+            card_moves = [
+                MoveCardInput(
+                    card_id=card_move.card_id,
+                    target_zone=card_move.target_zone,
+                    position=card_move.position,
+                    battlefield_x=None,
+                    battlefield_y=None
                 )
-                position = len(existing_cards)
+                for card_move in cards
+            ]
             
-            if card.zone == CardZone.BATTLEFIELD and target_zone != CardZone.BATTLEFIELD:
-                if card.is_tapped:
-                    card.is_tapped = False
-                    self.game_card_repo.db.commit()
+            engine.move_cards(card_moves)
             
-            self.game_card_repo.move_card(card_id, target_zone, position)
-        
-        if self.game_log_repo and cards:
-            card_count = len(cards)
-            if card_count == 1:
-                card = self.game_card_repo.get_card_by_id(cards[0].card_id)
-                if card:
+            sync_engine_to_db(engine, self.game_state_repo.db)
+            
+            if self.game_log_repo and cards:
+                card_count = len(cards)
+                if card_count == 1:
+                    card = self.game_card_repo.get_card_by_id(cards[0].card_id)
+                    if card:
+                        from_zone = card.zone
+                        self.game_log_repo.create_log(
+                            game_id=game_state.id,
+                            player_id=current_user.id,
+                            action_type="move",
+                            message=f"{current_user.username} moved {card.card_name} from {from_zone} to {cards[0].target_zone.value}",
+                            card_id=card.id,
+                            card_name=card.card_name,
+                            from_zone=from_zone,
+                            to_zone=cards[0].target_zone.value
+                        )
+                else:
                     self.game_log_repo.create_log(
                         game_id=game_state.id,
                         player_id=current_user.id,
                         action_type="move",
-                        message=f"{current_user.username} moved {card.card_name} from {from_zone} to {cards[0].target_zone.value}",
-                        card_id=card.id,
-                        card_name=card.card_name,
-                        from_zone=from_zone,
-                        to_zone=cards[0].target_zone.value
+                        message=f"{current_user.username} moved {card_count} cards to {cards[0].target_zone.value}"
                     )
-            else:
-                self.game_log_repo.create_log(
-                    game_id=game_state.id,
-                    player_id=current_user.id,
-                    action_type="move",
-                    message=f"{current_user.username} moved {card_count} cards to {cards[0].target_zone.value}"
-                )
+        else:
+            for card_move in cards:
+                card_id = card_move.card_id
+                target_zone = card_move.target_zone
+                position = card_move.position
+                
+                card = self.game_card_repo.get_card_by_id(card_id)
+                if not card:
+                    continue
+                
+                if card.player_game_state_id != player_state.id:
+                    continue
+                
+                from_zone = card.zone
+                
+                if target_zone in (CardZone.GRAVEYARD, CardZone.EXILE, CardZone.BATTLEFIELD):
+                    existing_cards = self.game_card_repo.get_player_cards_in_zone(
+                        player_state.id, target_zone
+                    )
+                    position = len(existing_cards)
+                
+                if card.zone == CardZone.BATTLEFIELD and target_zone != CardZone.BATTLEFIELD:
+                    if card.is_tapped:
+                        card.is_tapped = False
+                        self.game_card_repo.db.commit()
+                
+                self.game_card_repo.move_card(card_id, target_zone, position)
+            
+            if self.game_log_repo and cards:
+                card_count = len(cards)
+                if card_count == 1:
+                    card = self.game_card_repo.get_card_by_id(cards[0].card_id)
+                    if card:
+                        from_zone = card.zone
+                        self.game_log_repo.create_log(
+                            game_id=game_state.id,
+                            player_id=current_user.id,
+                            action_type="move",
+                            message=f"{current_user.username} moved {card.card_name} from {from_zone} to {cards[0].target_zone.value}",
+                            card_id=card.id,
+                            card_name=card.card_name,
+                            from_zone=from_zone,
+                            to_zone=cards[0].target_zone.value
+                        )
+                else:
+                    self.game_log_repo.create_log(
+                        game_id=game_state.id,
+                        player_id=current_user.id,
+                        action_type="move",
+                        message=f"{current_user.username} moved {card_count} cards to {cards[0].target_zone.value}"
+                    )
         
         return await self.get_game_state(game_id, current_user)
     
@@ -957,20 +1059,44 @@ class GameService:
                 detail="This card is not yours"
             )
         
-        was_tapped = card.is_tapped
-        
-        self.game_card_repo.toggle_tapped(card_id)
-        
-        if self.game_log_repo:
-            tap_action = "untapped" if was_tapped else "tapped"
-            self.game_log_repo.create_log(
-                game_id=game_state.id,
-                player_id=current_user.id,
-                action_type="tap",
-                message=f"{current_user.username} {tap_action} {card.card_name}",
-                card_id=card.id,
-                card_name=card.card_name
-            )
+        if self._use_engine(game):
+            player_states = self.player_game_state_repo.get_by_game_state(game_state.id)
+            cards_by_player = self._get_cards_by_player(player_states)
+            usernames = self._get_usernames(player_states)
+            
+            engine = create_engine_from_db(game_state, player_states, cards_by_player, usernames)
+            
+            was_tapped = card.is_tapped
+            
+            engine.tap_card(card_id)
+            
+            sync_engine_to_db(engine, self.game_state_repo.db)
+            
+            if self.game_log_repo:
+                tap_action = "untapped" if was_tapped else "tapped"
+                self.game_log_repo.create_log(
+                    game_id=game_state.id,
+                    player_id=current_user.id,
+                    action_type="tap",
+                    message=f"{current_user.username} {tap_action} {card.card_name}",
+                    card_id=card.id,
+                    card_name=card.card_name
+                )
+        else:
+            was_tapped = card.is_tapped
+            
+            self.game_card_repo.toggle_tapped(card_id)
+            
+            if self.game_log_repo:
+                tap_action = "untapped" if was_tapped else "tapped"
+                self.game_log_repo.create_log(
+                    game_id=game_state.id,
+                    player_id=current_user.id,
+                    action_type="tap",
+                    message=f"{current_user.username} {tap_action} {card.card_name}",
+                    card_id=card.id,
+                    card_name=card.card_name
+                )
         
         return await self.get_game_state(game_id, current_user)
     
@@ -1183,23 +1309,42 @@ class GameService:
                 detail="You are not in this game"
             )
         
-        battlefield_cards = self.game_card_repo.get_player_cards_in_zone(
-            player_state.id, CardZone.BATTLEFIELD
-        )
-        
-        for card in battlefield_cards:
-            if card.is_tapped:
-                card.is_tapped = False
-        
-        self.game_card_repo.db.commit()
-        
-        if self.game_log_repo:
-            self.game_log_repo.create_log(
-                game_id=game_state.id,
-                player_id=current_user.id,
-                action_type="untap_all",
-                message=f"{current_user.username} untaps all"
+        if self._use_engine(game):
+            player_states = self.player_game_state_repo.get_by_game_state(game_state.id)
+            cards_by_player = self._get_cards_by_player(player_states)
+            usernames = self._get_usernames(player_states)
+            
+            engine = create_engine_from_db(game_state, player_states, cards_by_player, usernames)
+            
+            engine.untap_all(player_state.user_id)
+            
+            sync_engine_to_db(engine, self.game_state_repo.db)
+            
+            if self.game_log_repo:
+                self.game_log_repo.create_log(
+                    game_id=game_state.id,
+                    player_id=current_user.id,
+                    action_type="untap_all",
+                    message=f"{current_user.username} untaps all"
+                )
+        else:
+            battlefield_cards = self.game_card_repo.get_player_cards_in_zone(
+                player_state.id, CardZone.BATTLEFIELD
             )
+            
+            for card in battlefield_cards:
+                if card.is_tapped:
+                    card.is_tapped = False
+            
+            self.game_card_repo.db.commit()
+            
+            if self.game_log_repo:
+                self.game_log_repo.create_log(
+                    game_id=game_state.id,
+                    player_id=current_user.id,
+                    action_type="untap_all",
+                    message=f"{current_user.username} untaps all"
+                )
         
         return await self.get_game_state(game_id, current_user)
     
@@ -1233,23 +1378,119 @@ class GameService:
                 detail="You are not in this game"
             )
         
-        player_state.life_total += amount
-        if player_state.life_total < 0:
-            player_state.life_total = 0
+        if self._use_engine(game):
+            player_states = self.player_game_state_repo.get_by_game_state(game_state.id)
+            cards_by_player = self._get_cards_by_player(player_states)
+            usernames = self._get_usernames(player_states)
+            
+            engine = create_engine_from_db(game_state, player_states, cards_by_player, usernames)
+            
+            engine.adjust_life(player_state.user_id, amount)
+            
+            sync_engine_to_db(engine, self.game_state_repo.db)
+            
+            if self.game_log_repo:
+                if amount > 0:
+                    message = f"{current_user.username} gained {amount} life"
+                else:
+                    message = f"{current_user.username} lost {abs(amount)} life"
+                self.game_log_repo.create_log(
+                    game_id=game_state.id,
+                    player_id=current_user.id,
+                    action_type="adjust_life",
+                    message=message
+                )
+        else:
+            player_state.life_total += amount
+            if player_state.life_total < 0:
+                player_state.life_total = 0
+            
+            self.player_game_state_repo.db.commit()
+            
+            if self.game_log_repo:
+                if amount > 0:
+                    message = f"{current_user.username} gained {amount} life"
+                else:
+                    message = f"{current_user.username} lost {abs(amount)} life"
+                self.game_log_repo.create_log(
+                    game_id=game_state.id,
+                    player_id=current_user.id,
+                    action_type="adjust_life",
+                    message=message
+                )
         
-        self.player_game_state_repo.db.commit()
+        return await self.get_game_state(game_id, current_user)
+    
+    async def add_mana(
+        self,
+        game_id: int,
+        color: str,
+        amount: int,
+        current_user: User
+    ) -> GameStateResponse:
+        game = self._get_game_or_404(game_id)
         
-        if self.game_log_repo:
-            if amount > 0:
-                message = f"{current_user.username} gained {amount} life"
-            else:
-                message = f"{current_user.username} lost {abs(amount)} life"
-            self.game_log_repo.create_log(
-                game_id=game_state.id,
-                player_id=current_user.id,
-                action_type="adjust_life",
-                message=message
+        if game.status != GameStatus.IN_PROGRESS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Game is not in progress"
             )
+        
+        game_state = self.game_state_repo.get_by_game_room_id(game_id)
+        if not game_state:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Game state not found"
+            )
+        
+        player_state = self.player_game_state_repo.get_by_game_state_and_user(
+            game_state.id, current_user.id
+        )
+        if not player_state:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not in this game"
+            )
+        
+        try:
+            mana_color = ManaColor(color)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid mana color: {color}"
+            )
+        
+        if self._use_engine(game):
+            player_states = self.player_game_state_repo.get_by_game_state(game_state.id)
+            cards_by_player = self._get_cards_by_player(player_states)
+            usernames = self._get_usernames(player_states)
+            
+            engine = create_engine_from_db(game_state, player_states, cards_by_player, usernames)
+            
+            engine.add_mana(player_state.user_id, mana_color, amount)
+            
+            sync_engine_to_db(engine, self.game_state_repo.db)
+            
+            if self.game_log_repo:
+                self.game_log_repo.create_log(
+                    game_id=game_state.id,
+                    player_id=current_user.id,
+                    action_type="add_mana",
+                    message=f"{current_user.username} added {amount} {mana_color.value} mana"
+                )
+        else:
+            mana_field = f"{mana_color.value}_mana"
+            if hasattr(player_state, mana_field):
+                setattr(player_state, mana_field, getattr(player_state, mana_field) + amount)
+                self.player_game_state_repo.db.commit()
+                
+                if self.game_log_repo:
+                    self.game_log_repo.create_log(
+                        game_id=game_state.id,
+                        player_id=current_user.id,
+                        action_type="add_mana",
+                        message=f"{current_user.username} added {amount} {mana_color.value} mana"
+                    )
         
         return await self.get_game_state(game_id, current_user)
     
@@ -1258,7 +1499,7 @@ class GameService:
         game_id: int,
         limit: int = 50
     ) -> List[GameLogResponse]:
-        game = self._get_game_or_404(game_id)
+        self._get_game_or_404(game_id)
         
         game_state = self.game_state_repo.get_by_game_room_id(game_id)
         if not game_state:
@@ -1307,7 +1548,6 @@ class GameService:
         return await self._build_game_response(game)
     
     async def _build_game_response(self, game: GameRoom) -> GameRoomResponse:
-        from app.models.game import PlayerStatus
         # Get all players (both accepted and pending) so hosts can see pending requests
         players = self.player_repo.get_all_players(game.id)
         

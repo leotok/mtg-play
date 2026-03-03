@@ -96,7 +96,7 @@ export const Card: React.FC<{
   let cardTop = top;
   let zIndex = idx;
 
-  if (isHovered) {
+  if (isHovered && inHand) {
     cardTop = -15;
   }
 

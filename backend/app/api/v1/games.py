@@ -1,9 +1,8 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, HTTPException
 from typing import List
 
 from app.core.auth import get_current_user
 from app.models.user import User
-from app.models.game import CardZone
 from app.schemas.game import (
     GameRoomCreate,
     GameRoomResponse,
@@ -13,17 +12,20 @@ from app.schemas.game import (
 )
 from app.schemas.game_state import (
     GameStateResponse,
-    DrawCardRequest,
     PlayCardRequest,
     MoveCardRequest,
     MoveCardsRequest,
-    TapCardRequest,
     BattlefieldPositionRequest,
     AdjustLifeRequest,
+    AddManaRequest,
     GameLogResponse,
+    ChooseCardSideResponse,
+    CardSideOption,
 )
 from app.services.game_service import get_game_service, GameService
 from app.socket import get_sio
+from app.engine.exceptions import GameActionError
+from app.engine.models import card_needs_side_selection, get_card_sides_info
 import logging
 
 logger = logging.getLogger(__name__)
@@ -266,7 +268,7 @@ async def draw_card(
     return await game_service.draw_card(game_id, current_user)
 
 
-@router.post("/{game_id}/play-card", response_model=GameStateResponse)
+@router.post("/{game_id}/play-card")
 async def play_card(
     game_id: int,
     request: PlayCardRequest,
@@ -274,15 +276,69 @@ async def play_card(
     game_service: GameService = Depends(get_game_service)
 ):
     """Play a card from hand to battlefield"""
-    return await game_service.play_card(
-        game_id, 
-        request.card_id, 
-        current_user, 
-        request.target_zone,
-        request.position,
-        request.battlefield_x,
-        request.battlefield_y
-    )
+    try:
+        game_state = await game_service.get_game_state(game_id, current_user)
+        
+        if request.side_index is None:
+            current_user_state = None
+            for player in game_state.players:
+                if player.user_id == current_user.id:
+                    current_user_state = player
+                    break
+            
+            if current_user_state:
+                all_cards = (
+                    current_user_state.hand + 
+                    current_user_state.commander
+                )
+                card = next((c for c in all_cards if c.id == request.card_id), None)
+                
+                if card and card_needs_side_selection(card):
+                    sides_info = get_card_sides_info(card)
+                    sides = [
+                        CardSideOption(
+                            side_index=s['side_index'],
+                            name=s['name'],
+                            mana_cost=s['mana_cost'],
+                            type_line=s['type_line'],
+                            image_url=s['image_url'],
+                        )
+                        for s in sides_info
+                    ]
+                    return ChooseCardSideResponse(
+                        card_id=card.id,
+                        card_name=card.card_name,
+                        sides=sides
+                    )
+        
+        result = await game_service.play_card(
+            game_id, 
+            request.card_id, 
+            current_user, 
+            request.target_zone,
+            request.position,
+            request.battlefield_x,
+            request.battlefield_y,
+            request.side_index
+        )
+        return result
+    except GameActionError as e:
+        error_type = type(e).__name__
+        code_map = {
+            "InvalidCardError": "INVALID_CARD",
+            "InvalidZoneError": "INVALID_ZONE",
+            "InsufficientResourcesError": "INSUFFICIENT_RESOURCES",
+            "EmptyLibraryError": "EMPTY_LIBRARY",
+            "InvalidPhaseError": "INVALID_PHASE",
+        }
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error_type": error_type,
+                "message": str(e),
+                "code": code_map.get(error_type, "UNKNOWN_ERROR"),
+            }
+        )
 
 
 @router.post("/{game_id}/move-card", response_model=GameStateResponse)
@@ -385,3 +441,14 @@ async def get_game_logs(
 ):
     """Get game log entries"""
     return await game_service.get_game_logs(game_id, limit)
+
+
+@router.post("/{game_id}/add-mana", response_model=GameStateResponse)
+async def add_mana(
+    game_id: int,
+    request: AddManaRequest,
+    current_user: User = Depends(get_current_user),
+    game_service: GameService = Depends(get_game_service)
+):
+    """Add mana to the current player's mana pool"""
+    return await game_service.add_mana(game_id, request.color, request.amount, current_user)

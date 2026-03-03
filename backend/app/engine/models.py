@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 from enum import Enum
 from datetime import datetime
 
@@ -38,6 +38,51 @@ class ManaColor(str, Enum):
     COLORLESS = "colorless"
 
 
+MANA_SYMBOL_MAP = {
+    "W": ManaColor.WHITE,
+    "U": ManaColor.BLUE,
+    "B": ManaColor.BLACK,
+    "R": ManaColor.RED,
+    "G": ManaColor.GREEN,
+    "C": ManaColor.COLORLESS,
+}
+
+
+def parse_mana_cost(mana_cost: Optional[str]) -> Dict[ManaColor, int]:
+    """Parse a MTG mana cost string into a dictionary of color amounts.
+    
+    Examples:
+        "{W}{U}{2}" -> {WHITE: 1, BLUE: 1, COLORLESS: 2}
+        "{3}{R}{R}" -> {COLORLESS: 3, RED: 2}
+        "{B}{B}{G}" -> {BLACK: 2, GREEN: 1}
+        None or "" -> {}
+    """
+    if not mana_cost:
+        return {}
+    
+    result: Dict[ManaColor, int] = {}
+    
+    import re
+    symbols = re.findall(r'\{[^}]+\}', mana_cost)
+    
+    for symbol in symbols:
+        symbol = symbol.strip('{}')
+        
+        if symbol.isdigit():
+            result[ManaColor.COLORLESS] = result.get(ManaColor.COLORLESS, 0) + int(symbol)
+        elif symbol in MANA_SYMBOL_MAP:
+            color = MANA_SYMBOL_MAP[symbol]
+            result[color] = result.get(color, 0) + 1
+        elif symbol == "X" or symbol == "XRR" or symbol.startswith("X"):
+            pass
+        elif "/" in symbol:
+            pass
+        else:
+            pass
+    
+    return result
+
+
 class CardPosition(BaseModel):
     x: Optional[float] = None
     y: Optional[float] = None
@@ -70,6 +115,8 @@ class Card(BaseModel):
     is_blocking: bool = False
     is_summoning_sick: bool = True
     damage_received: int = 0
+    
+    played_as_side: Optional[int] = None
     
     player_id: int
 
@@ -180,4 +227,79 @@ def card_to_engine(card, player_id: int) -> Card:
         is_summoning_sick=False,
         damage_received=card.damage_received,
         player_id=player_id,
+        played_as_side=card.played_as_side if hasattr(card, 'played_as_side') else None,
     )
+
+
+def get_card_face_mana_cost(card: Card, side_index: int) -> Optional[str]:
+    """Extract mana cost from a specific card face."""
+    if not card.card_faces or len(card.card_faces) <= side_index:
+        return None
+    face = card.card_faces[side_index]
+    return face.get("mana_cost") if isinstance(face, dict) else getattr(face, "mana_cost", None)
+
+
+def get_mana_cost_for_card(card: Card) -> Dict[ManaColor, int]:
+    """Get the mana cost for a card, considering DFC sides."""
+    if card.played_as_side is not None:
+        mana_cost = get_card_face_mana_cost(card, card.played_as_side)
+    elif card.card_faces:
+        mana_cost = get_card_face_mana_cost(card, 0)
+    else:
+        mana_cost = card.mana_cost
+    
+    return parse_mana_cost(mana_cost)
+
+
+def card_needs_side_selection(card: Card) -> bool:
+    """Check if a card needs side selection (DFC with multiple non-empty mana costs)."""
+    if not card.card_faces or len(card.card_faces) < 2:
+        return False
+    
+    mana_costs = []
+    for face in card.card_faces:
+        if isinstance(face, dict):
+            mc = face.get("mana_cost")
+        else:
+            mc = getattr(face, "mana_cost", None)
+        mana_costs.append(mc)
+    
+    has_front_cost = mana_costs[0] and mana_costs[0] != ""
+    has_back_cost = len(mana_costs) > 1 and mana_costs[1] and mana_costs[1] != ""
+    
+    return has_front_cost and has_back_cost
+
+
+def get_card_sides_info(card: Card) -> List[Dict]:
+    """Get information about all card sides for side selection."""
+    if not card.card_faces:
+        return []
+    
+    sides = []
+    for i, face in enumerate(card.card_faces):
+        if isinstance(face, dict):
+            name = face.get("name", f"Side {i + 1}")
+            mana_cost = face.get("mana_cost")
+            type_line = face.get("type_line")
+            image_uris = face.get("image_uris")
+        else:
+            name = getattr(face, "name", f"Side {i + 1}")
+            mana_cost = getattr(face, "mana_cost", None)
+            type_line = getattr(face, "type_line", None)
+            image_uris = getattr(face, "image_uris", None)
+        
+        image_url = None
+        if image_uris:
+            image_url = image_uris.get("normal") or image_uris.get("large") or image_uris.get("small")
+        elif card.image_uris:
+            image_url = card.image_uris.get("normal") or card.image_uris.get("large") or card.image_uris.get("small")
+        
+        sides.append({
+            "side_index": i,
+            "name": name,
+            "mana_cost": mana_cost,
+            "type_line": type_line,
+            "image_url": image_url,
+        })
+    
+    return sides

@@ -61,6 +61,7 @@ export interface GameCard {
   is_attacking: boolean;
   is_blocking: boolean;
   damage_received: number;
+  played_as_side?: number;
 }
 
 export interface GameCardInBattlefield extends Omit<GameCard, 'zone' | 'damage_received'> {
@@ -124,4 +125,19 @@ export interface GameLog {
   to_zone?: string;
   message: string;
   created_at: string;
+}
+
+export interface CardSideOption {
+  side_index: number;
+  name: string;
+  mana_cost?: string;
+  type_line?: string;
+  image_url?: string;
+}
+
+export interface ChooseCardSideResponse {
+  card_id: number;
+  card_name: string;
+  sides: CardSideOption[];
+  requires_side_selection: boolean;
 }

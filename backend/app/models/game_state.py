@@ -34,6 +34,12 @@ class PlayerGameState(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=False)
     life_total: Mapped[int] = mapped_column(Integer, default=40)
     poison_counters: Mapped[int] = mapped_column(Integer, default=0)
+    white_mana: Mapped[int] = mapped_column(Integer, default=0)
+    blue_mana: Mapped[int] = mapped_column(Integer, default=0)
+    black_mana: Mapped[int] = mapped_column(Integer, default=0)
+    red_mana: Mapped[int] = mapped_column(Integer, default=0)
+    green_mana: Mapped[int] = mapped_column(Integer, default=0)
+    colorless_mana: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     game_state: Mapped["GameState"] = relationship("GameState", back_populates="players")

@@ -7,6 +7,8 @@ import { type GameCard, type CardZone, type GameCardInBattlefield } from '../typ
 import { CardPreview } from '../components/gamePage/CardPreview';
 import { PlayerZone } from '../components/gamePage/PlayerZone';
 import { GameSideBar } from '../components/gamePage/GameSideBar';
+import { Toast } from '../components/common/Toast';
+import CardSideModal from '../components/gamePage/CardSideModal';
 import { CARD_SIZES } from '../config';
 
 
@@ -18,6 +20,9 @@ const GamePage: React.FC = () => {
     gameState, 
     isLoading, 
     error, 
+    toast,
+    hoveredCard,
+    sideSelection,
     fetchGameState, 
     drawCard, 
     untapAll,
@@ -27,9 +32,10 @@ const GamePage: React.FC = () => {
     passPriority,
     moveCard,
     moveCards,
+    hideToast,
+    setHoveredCard,
+    clearSideSelection,
   } = useGameStateStore();
-
-  const [hoveredCard, setHoveredCard] = useState<GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null>(null);
 
   const [dragState, setDragState] = useState<{
     isDown: boolean
@@ -631,6 +637,28 @@ const GamePage: React.FC = () => {
             width: Math.abs(selectionBox.currentX - selectionBox.startX),
             height: Math.abs(selectionBox.currentY - selectionBox.startY),
           }}
+        />
+      )}
+
+      {/* Toast for errors */}
+      <Toast 
+        message={toast.message} 
+        isVisible={toast.isVisible} 
+        onClose={hideToast}
+      />
+
+      {/* Card Side Selection Modal */}
+      {sideSelection && (
+        <CardSideModal
+          cardName={sideSelection.card_name}
+          sides={sideSelection.sides}
+          onSelect={(sideIndex) => {
+            if (gameId) {
+              playCard(parseInt(gameId), sideSelection.card_id, undefined, undefined, sideIndex);
+            }
+            clearSideSelection();
+          }}
+          onClose={clearSideSelection}
         />
       )}
     </div>

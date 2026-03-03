@@ -34,36 +34,38 @@ export const Battlefield: React.FC<{
                 className={`h-[calc(100%-1.5rem)] p-1 border-2 rounded-lg relative select-none transition-colors border-none`}
                 onMouseDown={onMouseDownEmptyBattlefield}
             >
-                {player.battlefield.map((card) => {
-                const isDraggingThis = dragState?.isDragging && dragState?.cardId === card.id;
-                const isSelectedAndDragging = dragState?.isDragging && dragState?.selectedCards?.some(sc => sc.id === card.id);
-                if (isDraggingThis || isSelectedAndDragging) return null;
-                const cardZIndex = (card.position ?? 0) + 1;
-                const isCardSelected = selectedCardIds?.has(card.id) ?? false;
-                return (
-                    <div
-                    key={card.id}
-                    className="absolute cursor-pointer"
-                    data-card-id={card.id}
-                    style={{ 
-                        left: card.battlefield_x || 5, 
-                        top: card.battlefield_y || 5,
-                        transition: 'all 0.1s ease',
-                        zIndex: cardZIndex,
-                        pointerEvents: 'all',
-                    }}
-                    >
-                    <Card 
-                        card={card} 
-                        size="sm"
-                        idx={cardZIndex}
-                        isSelected={isCardSelected}
-                        onTap={() => onTapCard?.(card.id)}
-                        onMouseDown={isCurrentUser ? (e) => onMouseDownCard?.(card, e) : undefined}
-                        onHover={onHoverCard}
-                    />
-                    </div>
-                );
+                {[...player.battlefield]
+                    .sort((a, b) => a.position - b.position)
+                    .map((card, index) => {
+                    const isDraggingThis = dragState?.isDragging && dragState?.cardId === card.id;
+                    const isSelectedAndDragging = dragState?.isDragging && dragState?.selectedCards?.some(sc => sc.id === card.id);
+                    if (isDraggingThis || isSelectedAndDragging) return null;
+                    const cardZIndex = index + 1;
+                    const isCardSelected = selectedCardIds?.has(card.id) ?? false;
+                    return (
+                        <div
+                        key={card.id}
+                        className="absolute cursor-pointer"
+                        data-card-id={card.id}
+                        style={{ 
+                            left: card.battlefield_x || 5, 
+                            top: card.battlefield_y || 5,
+                            transition: 'all 0.1s ease',
+                            zIndex: cardZIndex,
+                            pointerEvents: 'all',
+                        }}
+                        >
+                        <Card 
+                            card={card} 
+                            size="sm"
+                            idx={cardZIndex}
+                            isSelected={isCardSelected}
+                            onTap={() => onTapCard?.(card.id)}
+                            onMouseDown={isCurrentUser ? (e) => onMouseDownCard?.(card, e) : undefined}
+                            onHover={onHoverCard}
+                        />
+                        </div>
+                    );
                 })}
                 
             </div>

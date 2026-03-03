@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 from app.models.game import TurnPhase, CardZone
@@ -111,6 +111,7 @@ class PlayCardRequest(BaseModel):
     position: int = 0
     battlefield_x: Optional[float] = None
     battlefield_y: Optional[float] = None
+    side_index: Optional[int] = None
 
 
 class MoveCardRequest(BaseModel):
@@ -135,3 +136,29 @@ class BattlefieldPositionRequest(BaseModel):
 
 class AdjustLifeRequest(BaseModel):
     amount: int
+
+
+class AddManaRequest(BaseModel):
+    color: str
+    amount: int = 1
+
+
+class GameActionErrorResponse(BaseModel):
+    error_type: str
+    message: str
+    code: str
+
+
+class CardSideOption(BaseModel):
+    side_index: int
+    name: str
+    mana_cost: Optional[str] = None
+    type_line: Optional[str] = None
+    image_url: Optional[str] = None
+
+
+class ChooseCardSideResponse(BaseModel):
+    card_id: int
+    card_name: str
+    sides: List[CardSideOption]
+    requires_side_selection: bool = True

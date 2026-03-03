@@ -5,10 +5,6 @@ from app.engine.models import (
     Card,
     CardZone,
     TurnPhase,
-    MoveCardInput,
-    CastSpellInput,
-    DeclareAttackerInput,
-    DeclareBlockerInput,
     ManaColor,
 )
 from app.engine.exceptions import (
@@ -19,7 +15,7 @@ from app.engine.exceptions import (
     InsufficientResourcesError,
     InvalidPhaseError,
 )
-from app.engine.phases import PhaseManager, create_action_result
+from app.engine.phases import PhaseManager
 
 
 class CardManager:
@@ -401,3 +397,170 @@ class CombatManager:
             player.battlefield = surviving
         
         return destroyed
+
+
+class LandTapper:
+    """Handles auto-tapping lands to produce mana for spell casting."""
+    
+    LAND_TYPES = {
+        "plains": ManaColor.WHITE,
+        "island": ManaColor.BLUE,
+        "swamp": ManaColor.BLACK,
+        "mountain": ManaColor.RED,
+        "forest": ManaColor.GREEN,
+    }
+    
+    DUAL_LANDS_NOT_PAIN = [
+        "tropical island", "badlands", "taiga", "scrubland", "volcanic island",
+        "bayou", "savannah", "underground sea", "karplus sea", "fenland",
+        "glowering", "rocky", "sequestered", "wildwood", "mistplain",
+    ]
+    
+    TRIOMES = [
+        "rau-triome", "jetmirs triome", "sidequarr triome", "zagoth triome", "ketria triome",
+        "indy triome", "ulumari triome", "mosaic", "repentant", "cascade",
+    ]
+    
+    SHOCK_LANDS = [
+        "overgrown tomb", "watery grave", "blood crypt", "stomping ground", "temple garden",
+        "hallowed fountain", "godless shrine", "iza", "breeding pool", "spire garden",
+    ]
+    
+    PAIN_LANDS = [
+        "karplus warmforest", "karplus nightfall", "shivan reef", "karam grul",
+        "llanowar reborn", "vivien reed", "jordan", "dakmor salvage",
+    ]
+    
+    def __init__(self, player: PlayerState):
+        self.player = player
+    
+    def get_untapped_lands(self) -> list[Card]:
+        """Get all untapped land cards from the player's battlefield."""
+        return [
+            card for card in self.player.battlefield
+            if not card.is_tapped and self._is_land(card)
+        ]
+    
+    def _is_land(self, card: Card) -> bool:
+        """Check if a card is a land."""
+        type_line = (card.type_line or "").lower()
+        return "land" in type_line
+    
+    def _get_land_priority(self, card: Card) -> int:
+        """Get priority for tapping a land (lower = tap first)."""
+        type_line = (card.type_line or "").lower()
+        name = (card.card_name or "").lower()
+        
+        if "basic" in type_line:
+            return 1
+        
+        is_dual = any(dual in name for dual in self.DUAL_LANDS_NOT_PAIN)
+        is_triome = "triome" in name
+        is_shock = any(shock in name for shock in self.SHOCK_LANDS)
+        is_pain = any(pain in name for pain in self.PAIN_LANDS)
+        
+        if is_dual:
+            return 2
+        if is_triome:
+            return 3
+        if is_shock:
+            return 4
+        if is_pain:
+            return 5
+        
+        return 2
+    
+    def _get_land_colors(self, card: Card) -> set[ManaColor]:
+        """Get the colors a land can produce based on its types."""
+        type_line = (card.type_line or "").lower()
+        name = (card.card_name or "").lower()
+        
+        colors = set()
+        
+        for land_type, color in self.LAND_TYPES.items():
+            if land_type in type_line:
+                colors.add(color)
+        
+        if any(dual in name for dual in self.DUAL_LANDS_NOT_PAIN):
+            colors.add(ManaColor.COLORLESS)
+        
+        if "triome" in name:
+            colors.update([ManaColor.GREEN, ManaColor.BLUE, ManaColor.RED])
+        
+        if any(shock in name for shock in self.SHOCK_LANDS):
+            colors.add(ManaColor.COLORLESS)
+        
+        if any(pain in name for pain in self.PAIN_LANDS):
+            colors.add(ManaColor.COLORLESS)
+        
+        if not colors:
+            colors.add(ManaColor.COLORLESS)
+        
+        return colors
+    
+    def tap_lands_for_mana(self, needed: dict) -> dict:
+        """Tap lands to produce the needed mana colors.
+        
+        Pays colored mana first, then generic/colorless mana.
+        
+        Args:
+            needed: Dictionary of colors and amounts needed
+            
+        Returns:
+            Dictionary of colors actually produced (may be more than needed)
+            
+        Raises:
+            InsufficientResourcesError: If not enough lands can produce needed mana
+        """
+        needed = {k: v for k, v in needed.items() if v > 0}
+        
+        colored_mana = {k: v for k, v in needed.items() if k != ManaColor.COLORLESS}
+        colorless_mana = needed.get(ManaColor.COLORLESS, 0)
+        
+        untapped = self.get_untapped_lands()
+        untapped_sorted = sorted(untapped, key=self._get_land_priority)
+        
+        produced: dict = {}
+        remaining = dict(colored_mana)
+        
+        for land in untapped_sorted:
+            if not remaining:
+                break
+            
+            land_colors = self._get_land_colors(land)
+            
+            for color in list(remaining.keys()):
+                if remaining.get(color, 0) > 0 and color in land_colors:
+                    land.is_tapped = True
+                    
+                    produced[color] = produced.get(color, 0) + 1
+                    remaining[color] = remaining.get(color, 0) - 1
+                    
+                    if remaining[color] <= 0:
+                        del remaining[color]
+                    
+                    break
+        
+        if remaining and sum(remaining.values()) > 0:
+            missing = ", ".join([f"{color.value}: {amt}" for color, amt in remaining.items() if amt > 0])
+            raise InsufficientResourcesError(
+                f"Cannot produce required mana: {missing}. Not enough untapped lands."
+            )
+        
+        if colorless_mana > 0:
+            remaining_colorless = colorless_mana
+            for land in untapped_sorted:
+                if remaining_colorless <= 0:
+                    break
+                
+                if not land.is_tapped:
+                    land.is_tapped = True
+                    produced[ManaColor.COLORLESS] = produced.get(ManaColor.COLORLESS, 0) + 1
+                    remaining_colorless -= 1
+            
+            if remaining_colorless > 0:
+                raise InsufficientResourcesError(
+                    f"Cannot produce required mana: colorless: {remaining_colorless}. Not enough untapped lands."
+                )
+        
+        return produced

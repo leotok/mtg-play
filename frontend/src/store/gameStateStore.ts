@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { apiClient } from '../services/apiClient';
-import type { GameState, GameLog } from '../types/gameState';
+import type { GameState, GameLog, ChooseCardSideResponse } from '../types/gameState';
+
+type HoveredCard = GameState['players'][0]['hand'][0] | null;
 
 interface GameStateStore {
   gameState: GameState | null;
@@ -8,12 +10,15 @@ interface GameStateStore {
   isLoading: boolean;
   error: string | null;
   gameId: number | null;
+  toast: { message: string; isVisible: boolean };
+  hoveredCard: HoveredCard;
+  sideSelection: ChooseCardSideResponse | null;
   
   fetchGameState: (gameId: number) => Promise<void>;
   fetchGameLogs: (gameId: number) => Promise<void>;
   drawCard: (gameId: number) => Promise<void>;
   untapAll: (gameId: number) => Promise<void>;
-  playCard: (gameId: number, cardId: number, battlefieldX?: number, battlefieldY?: number) => Promise<void>;
+  playCard: (gameId: number, cardId: number, battlefieldX?: number, battlefieldY?: number, sideIndex?: number) => Promise<void>;
   tapCard: (gameId: number, cardId: number) => Promise<void>;
   updateBattlefieldPosition: (gameId: number, cardId: number, x: number, y: number) => Promise<void>;
   moveCard: (gameId: number, cardId: number, targetZone: string, position: number) => Promise<void>;
@@ -22,6 +27,10 @@ interface GameStateStore {
   adjustLife: (gameId: number, amount: number) => Promise<void>;
   setGameState: (state: GameState) => void;
   clearGameState: () => void;
+  showToast: (message: string) => void;
+  hideToast: () => void;
+  setHoveredCard: (card: HoveredCard) => void;
+  clearSideSelection: () => void;
 }
 
 export const useGameStateStore = create<GameStateStore>((set) => ({
@@ -30,6 +39,14 @@ export const useGameStateStore = create<GameStateStore>((set) => ({
   isLoading: false,
   error: null,
   gameId: null,
+  toast: { message: '', isVisible: false },
+  hoveredCard: null,
+  sideSelection: null,
+
+  showToast: (message: string) => set({ toast: { message, isVisible: true } }),
+  hideToast: () => set({ toast: { message: '', isVisible: false } }),
+  setHoveredCard: (card) => set({ hoveredCard: card }),
+  clearSideSelection: () => set({ sideSelection: null }),
 
   fetchGameState: async (gameId: number) => {
     set({ isLoading: true, error: null });
@@ -81,22 +98,30 @@ export const useGameStateStore = create<GameStateStore>((set) => ({
     }
   },
 
-  playCard: async (gameId: number, cardId: number, battlefieldX?: number, battlefieldY?: number) => {
-    set({ isLoading: true, error: null });
+  playCard: async (gameId: number, cardId: number, battlefieldX?: number, battlefieldY?: number, sideIndex?: number) => {
+    set({ isLoading: true, error: null, hoveredCard: null });
     try {
-      const response = await apiClient.post<GameState>(`/games/${gameId}/play-card`, {
+      const response = await apiClient.post<GameState | ChooseCardSideResponse>(`/games/${gameId}/play-card`, {
         card_id: cardId,
         target_zone: 'battlefield',
         position: 0,
         battlefield_x: battlefieldX ?? null,
         battlefield_y: battlefieldY ?? null,
+        side_index: sideIndex ?? null,
       });
-      set({ gameState: response, isLoading: false });
+      
+      if ('requires_side_selection' in response && response.requires_side_selection) {
+        set({ sideSelection: response as ChooseCardSideResponse, isLoading: false });
+      } else {
+        set({ gameState: response as GameState, isLoading: false, hoveredCard: null });
+      }
     } catch (err: any) {
-      set({ 
-        error: err.response?.data?.detail || 'Failed to play card', 
-        isLoading: false 
-      });
+      const errorData = err.response?.data?.detail;
+      if (errorData && typeof errorData === 'object' && errorData.message) {
+        set({ toast: { message: errorData.message, isVisible: true }, isLoading: false, hoveredCard: null });
+      } else {
+        set({ toast: { message: 'Failed to play card', isVisible: true }, isLoading: false, hoveredCard: null });
+      }
     }
   },
 
@@ -185,6 +210,6 @@ export const useGameStateStore = create<GameStateStore>((set) => ({
   },
 
   clearGameState: () => {
-    set({ gameState: null, gameId: null, error: null });
+    set({ gameState: null, gameId: null, error: null, sideSelection: null });
   },
 }));

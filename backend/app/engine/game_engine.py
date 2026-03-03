@@ -2,26 +2,26 @@ from typing import Optional, TYPE_CHECKING
 from app.engine.models import (
     GameStateData,
     PlayerState,
-    Card,
     CardZone,
     TurnPhase,
     MoveCardInput,
-    CastSpellInput,
-    DeclareAttackerInput,
-    DeclareBlockerInput,
     ManaColor,
     ActionResult,
     card_to_engine,
+    parse_mana_cost,
+    get_mana_cost_for_card,
+    get_card_face_mana_cost,
+    card_needs_side_selection,
+    get_card_sides_info,
 )
 from app.engine.exceptions import (
     InvalidCardError,
     InvalidPlayerError,
     InvalidZoneError,
-    InvalidPhaseError,
     EmptyLibraryError,
 )
 from app.engine.phases import PhaseManager, create_action_result
-from app.engine.actions import CardManager, LifeManager, ManaManager, CombatManager
+from app.engine.actions import CardManager, LifeManager, ManaManager, CombatManager, LandTapper
 
 if TYPE_CHECKING:
     from app.models.game_state import GameState as DBGameState
@@ -60,6 +60,7 @@ class GameEngine:
         position: int = 0,
         battlefield_x: Optional[float] = None,
         battlefield_y: Optional[float] = None,
+        side_index: Optional[int] = None,
     ) -> ActionResult:
         card = self.card_manager.get_card(card_id)
         if not card:
@@ -67,6 +68,31 @@ class GameEngine:
         
         if card.zone not in [CardZone.HAND.value, CardZone.COMMANDER.value]:
             raise InvalidZoneError("Card must be in hand or commander zone to play")
+        
+        player = self.phase_manager.get_player_by_id(card.player_id)
+        
+        if side_index is not None:
+            card.played_as_side = side_index
+        
+        needed_mana = get_mana_cost_for_card(card)
+        
+        if needed_mana:
+            pool = player.mana_pool
+            
+            for color, amount in needed_mana.items():
+                pool_amount = pool.get(color, 0)
+                if pool_amount >= amount:
+                    pool[color] = pool_amount - amount
+                    needed_mana[color] = 0
+                else:
+                    needed_mana[color] = amount - pool_amount
+                    pool[color] = 0
+            
+            remaining_needed = sum(v for v in needed_mana.values() if v > 0)
+            
+            if remaining_needed > 0:
+                land_tapper = LandTapper(player)
+                land_tapper.tap_lands_for_mana(needed_mana)
         
         from_zone = CardZone(card.zone)
         
@@ -128,8 +154,6 @@ class GameEngine:
             card = self.card_manager.get_card(move.card_id)
             if not card:
                 continue
-            
-            from_zone = CardZone(card.zone)
             
             target_zone = move.target_zone
             position = move.position
@@ -197,6 +221,9 @@ class GameEngine:
     
     def pass_priority(self) -> ActionResult:
         next_phase, turn_changed, new_active_player = self.phase_manager.advance_phase()
+        
+        for player in self.game_state.players:
+            player.mana_pool.clear()
         
         phase_changed = True
         message = f"Advanced to {next_phase.value.replace('_', ' ').title()}"
@@ -316,6 +343,8 @@ def create_engine_from_db(
     db_cards_by_player: dict,
     usernames: dict,
 ) -> GameEngine:
+    from app.engine.models import ManaColor
+    
     players = []
     
     for ps in db_player_states:
@@ -328,6 +357,15 @@ def create_engine_from_db(
         exile = [card_to_engine(c, player_id) for c in db_cards_by_player.get(player_id, {}).get("exile", [])]
         commander = [card_to_engine(c, player_id) for c in db_cards_by_player.get(player_id, {}).get("commander", [])]
         
+        mana_pool = {
+            ManaColor.WHITE: ps.white_mana or 0,
+            ManaColor.BLUE: ps.blue_mana or 0,
+            ManaColor.BLACK: ps.black_mana or 0,
+            ManaColor.RED: ps.red_mana or 0,
+            ManaColor.GREEN: ps.green_mana or 0,
+            ManaColor.COLORLESS: ps.colorless_mana or 0,
+        }
+        
         player_state = PlayerState(
             id=ps.id,
             user_id=ps.user_id,
@@ -336,6 +374,7 @@ def create_engine_from_db(
             is_active=ps.is_active,
             life_total=ps.life_total,
             poison_counters=ps.poison_counters,
+            mana_pool=mana_pool,
             library=library,
             hand=hand,
             battlefield=battlefield,
@@ -363,9 +402,23 @@ def create_engine_from_db(
 
 
 def sync_engine_to_db(engine: GameEngine, db_session) -> None:
-    from app.models.game_state import GameCard
+    from app.models.game_state import GameCard, PlayerGameState
+    from app.engine.models import ManaColor
     
     for player in engine.game_state.players:
+        db_player = db_session.query(PlayerGameState).filter(
+            PlayerGameState.user_id == player.user_id,
+            PlayerGameState.game_state_id == engine.game_state.id
+        ).first()
+        
+        if db_player:
+            db_player.white_mana = player.mana_pool.get(ManaColor.WHITE, 0)
+            db_player.blue_mana = player.mana_pool.get(ManaColor.BLUE, 0)
+            db_player.black_mana = player.mana_pool.get(ManaColor.BLACK, 0)
+            db_player.red_mana = player.mana_pool.get(ManaColor.RED, 0)
+            db_player.green_mana = player.mana_pool.get(ManaColor.GREEN, 0)
+            db_player.colorless_mana = player.mana_pool.get(ManaColor.COLORLESS, 0)
+        
         for zone_name in ["library", "hand", "battlefield", "graveyard", "exile", "commander"]:
             zone_cards = getattr(player, zone_name)
             for card in zone_cards:
