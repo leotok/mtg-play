@@ -625,6 +625,7 @@ const GamePage: React.FC = () => {
         
         <GameSideBar
           gameState={gameState}
+          gameMode={gameState.game_mode}
           isCurrentUserActive={isCurrentUserActive}
           currentPlayer={currentPlayer}
           currentPlayerId={user?.id || 0}

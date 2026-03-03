@@ -97,6 +97,7 @@ export interface GameState {
   players: PlayerGameState[];
   created_at: string;
   logs?: GameLog[];
+  game_mode?: string;
 }
 
 export const TURN_PHASE_LABELS: Record<TurnPhase, string> = {

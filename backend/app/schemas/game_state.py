@@ -99,6 +99,7 @@ class GameStateResponse(BaseModel):
     players: List[PlayerGameStateResponse]
     created_at: datetime
     logs: Optional[List[GameLogResponse]] = []
+    game_mode: Optional[str] = None
 
 
 class DrawCardRequest(BaseModel):

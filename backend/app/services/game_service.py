@@ -565,6 +565,7 @@ class GameService:
             players=player_responses,
             created_at=game_state.created_at,
             logs=[GameLogResponse.model_validate(log) for log in self.game_log_repo.get_game_logs(game_state.id, 50)] if self.game_log_repo else [],
+            game_mode=game.game_mode,
         )
     
     def _card_to_dict(self, card: GameCard, reveal: bool) -> dict:

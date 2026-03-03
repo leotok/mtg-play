@@ -1,12 +1,13 @@
 import React from "react";
-import type { GameState, PlayerGameState } from "../../types/gameState";
+import type { GameState, PlayerGameState, TurnPhase } from "../../types/gameState";
 import { TURN_PHASE_LABELS } from "../../types/gameState";
 import { ArrowRightIcon } from "@heroicons/react/24/outline";
 import { useSettingsStore } from "../../store/settingsStore";
 import { GameLog } from "./GameLog";
 
-export const GameSideBar: React.FC<{
+interface GameSideBarProps {
     gameState: GameState;
+    gameMode?: string;
     isCurrentUserActive: boolean;
     currentPlayer?: PlayerGameState | null;
     currentPlayerId: number;
@@ -14,8 +15,46 @@ export const GameSideBar: React.FC<{
     handleUntapAll: () => void;
     handlePassPriority: () => void;
     isLoading: boolean;
-}> = ({gameState, isCurrentUserActive, currentPlayer, currentPlayerId, handleDrawCard, handleUntapAll, handlePassPriority, isLoading}) => {
+}
+
+const getDynamicButton = (
+    phase: TurnPhase,
+    handleUntapAll: () => void,
+    handleDrawCard: () => void,
+    handlePassPriority: () => void,
+    isLoading: boolean
+): { label: string; color: string; action: () => void } | null => {
+    switch (phase) {
+        case "untap":
+            return { label: "Untap", color: "bg-green-600 hover:bg-green-500", action: () => {handleUntapAll(); handlePassPriority();} };
+        case "upkeep":
+            return { label: "Upkeep", color: "bg-yellow-600 hover:bg-yellow-500", action: handlePassPriority };
+        case "draw":
+            return { label: "Draw", color: "bg-blue-600 hover:bg-blue-500", action: () => {handleDrawCard(); handlePassPriority();} };
+        case "cleanup":
+            return { label: "End Turn", color: "bg-red-600 hover:bg-red-500", action: handlePassPriority };
+        default:
+            return { label: "Next", color: "bg-yellow-600 hover:bg-yellow-500", action: handlePassPriority };
+    }
+};
+
+export const GameSideBar: React.FC<GameSideBarProps> = ({
+    gameState,
+    gameMode,
+    isCurrentUserActive,
+    currentPlayer,
+    currentPlayerId,
+    handleDrawCard,
+    handleUntapAll,
+    handlePassPriority,
+    isLoading
+}) => {
     const { cardScale, setCardScale } = useSettingsStore();
+    
+    const isRulesEnforced = gameMode === "rules_enforced";
+    const dynamicButton = isRulesEnforced && isCurrentUserActive && currentPlayer
+        ? getDynamicButton(gameState.current_phase, handleUntapAll, handleDrawCard, handlePassPriority, isLoading)
+        : null;
     
     return (
         
@@ -69,33 +108,46 @@ export const GameSideBar: React.FC<{
                 {isCurrentUserActive && currentPlayer && (
                     <div className="flex flex-col gap-2">
 
-                    {/* Untap all */}
-                    <button
-                        onClick={handleUntapAll}
-                        disabled={isLoading}
-                        className="flex items-center justify-center gap-1 px-2 py-2 bg-green-600 hover:bg-green-500 text-white rounded transition-colors text-sm disabled:opacity-50"
-                    >
-                        Untap
-                    </button>
+                    {/* Rules Enforced: Single Dynamic Button */}
+                    {isRulesEnforced && dynamicButton && (
+                        <button
+                            onClick={dynamicButton.action}
+                            disabled={isLoading}
+                            className={`flex items-center justify-center gap-1 px-2 py-2 ${dynamicButton.color} text-white rounded transition-colors text-sm disabled:opacity-50`}
+                        >
+                            {dynamicButton.label}
+                        </button>
+                    )}
 
-                    {/* Draw card */}
-                    <button
-                        onClick={handleDrawCard}
-                        disabled={isLoading}
-                        className="flex items-center justify-center gap-1 px-2 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors text-sm disabled:opacity-50"
-                    >
-                        <ArrowRightIcon className="h-4 w-4" />
-                        Draw
-                    </button>
+                    {/* Manual Mode: Three Buttons */}
+                    {!isRulesEnforced && (
+                        <>
+                        <button
+                            onClick={handleUntapAll}
+                            disabled={isLoading}
+                            className="flex items-center justify-center gap-1 px-2 py-2 bg-green-600 hover:bg-green-500 text-white rounded transition-colors text-sm disabled:opacity-50"
+                        >
+                            Untap
+                        </button>
 
-                    {/* Pass priority */}
-                    <button
-                        onClick={handlePassPriority}
-                        disabled={isLoading}
-                        className="flex items-center justify-center gap-1 px-2 py-2 bg-yellow-600 hover:bg-yellow-500 text-white rounded transition-colors text-sm disabled:opacity-50"
-                    >
-                        Pass Priority
-                    </button>
+                        <button
+                            onClick={handleDrawCard}
+                            disabled={isLoading}
+                            className="flex items-center justify-center gap-1 px-2 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors text-sm disabled:opacity-50"
+                        >
+                            <ArrowRightIcon className="h-4 w-4" />
+                            Draw
+                        </button>
+
+                        <button
+                            onClick={handlePassPriority}
+                            disabled={isLoading}
+                            className="flex items-center justify-center gap-1 px-2 py-2 bg-yellow-600 hover:bg-yellow-500 text-white rounded transition-colors text-sm disabled:opacity-50"
+                        >
+                            Pass Priority
+                        </button>
+                        </>
+                    )}
                     </div>
                 )}
 
