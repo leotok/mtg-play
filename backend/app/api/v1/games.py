@@ -21,6 +21,7 @@ from app.schemas.game_state import (
     GameLogResponse,
     ChooseCardSideResponse,
     CardSideOption,
+    ValidPlaysResponse,
 )
 from app.services.game_service import get_game_service, GameService
 from app.socket import get_sio
@@ -452,3 +453,13 @@ async def add_mana(
 ):
     """Add mana to the current player's mana pool"""
     return await game_service.add_mana(game_id, request.color, request.amount, current_user)
+
+
+@router.get("/{game_id}/valid-plays", response_model=ValidPlaysResponse)
+async def get_valid_plays(
+    game_id: int,
+    current_user: User = Depends(get_current_user),
+    game_service: GameService = Depends(get_game_service)
+):
+    """Get all valid plays for the current player"""
+    return await game_service.get_valid_plays(game_id, current_user)

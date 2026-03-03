@@ -27,6 +27,8 @@ from app.schemas.game_state import (
 from app.services.scryfall import get_scryfall_service
 from app.engine.game_engine import create_engine_from_db, sync_engine_to_db
 from app.engine.models import MoveCardInput, ManaColor
+from app.engine.exceptions import TooManyLandsError, InvalidPhaseForLandError
+from app.socket import get_sio
 import logging
 import secrets
 import string
@@ -729,14 +731,25 @@ class GameService:
             
             from_zone = card.zone
             
-            engine.play_card(
-                card_id,
-                target_zone,
-                position,
-                battlefield_x,
-                battlefield_y,
-                side_index
-            )
+            try:
+                engine.play_card(
+                    card_id,
+                    target_zone,
+                    position,
+                    battlefield_x,
+                    battlefield_y,
+                    side_index
+                )
+            except TooManyLandsError as e:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=str(e)
+                )
+            except InvalidPhaseForLandError as e:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=str(e)
+                )
             
             sync_engine_to_db(engine, self.game_state_repo.db)
             
@@ -781,6 +794,68 @@ class GameService:
                 )
         
         return await self.get_game_state(game_id, current_user)
+    
+    async def get_valid_plays(
+        self,
+        game_id: int,
+        current_user: User
+    ):
+        from app.schemas.game_state import ValidPlayCard as SchemaValidPlayCard, ValidPlaysResponse
+        from app.engine.exceptions import TooManyLandsError, InvalidPhaseForLandError
+        
+        game = self._get_game_or_404(game_id)
+        
+        if game.status != GameStatus.IN_PROGRESS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Game is not in progress"
+            )
+        
+        game_state = self.game_state_repo.get_by_game_room_id(game_id)
+        if not game_state:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Game state not found"
+            )
+        
+        player_state = self.player_game_state_repo.get_by_game_state_and_user(
+            game_state.id, current_user.id
+        )
+        if not player_state:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Player not found in game"
+            )
+        
+        player_states = self.player_game_state_repo.get_by_game_state(game_state.id)
+        cards_by_player = self._get_cards_by_player(player_states)
+        usernames = self._get_usernames(player_states)
+        
+        engine = create_engine_from_db(game_state, player_states, cards_by_player, usernames)
+        
+        valid_plays = engine.get_valid_plays(player_state.user_id)
+        
+        plays = [
+            SchemaValidPlayCard(
+                card_id=p['card_id'],
+                card_name=p['card_name'],
+                zone=p['zone'],
+                mana_cost=p['mana_cost'],
+                can_afford_mana=p['can_afford_mana'],
+                needs_side_selection=p['needs_side_selection'],
+                sides=p.get('sides')
+            )
+            for p in valid_plays['plays']
+        ]
+        
+        return ValidPlaysResponse(
+            current_phase=valid_plays['current_phase'],
+            can_cast_spells=valid_plays['can_cast_spells'],
+            can_play_land=valid_plays['can_play_land'],
+            available_mana=valid_plays['available_mana'],
+            untapped_lands_count=valid_plays['untapped_lands_count'],
+            plays=plays
+        )
     
     async def move_card(
         self,
@@ -1185,10 +1260,11 @@ class GameService:
             )
         
         if player_state.user_id != game_state.active_player_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Only the active player can pass priority"
-            )
+            if game_state.current_phase != TurnPhase.CLEANUP.value:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Only the active player can pass priority"
+                )
         
         if self._use_engine(game):
             player_states = self.player_game_state_repo.get_by_game_state(game_state.id)
@@ -1200,6 +1276,10 @@ class GameService:
             result = engine.pass_priority()
             
             sync_engine_to_db(engine, self.game_state_repo.db)
+            
+            sio = get_sio()
+            if sio:
+                await sio.emit("game_state_updated", {"game_id": game_id}, room=f"game_{game_id}")
             
             if self.game_log_repo:
                 if result.turn_changed:

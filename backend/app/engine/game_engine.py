@@ -19,6 +19,8 @@ from app.engine.exceptions import (
     InvalidPlayerError,
     InvalidZoneError,
     EmptyLibraryError,
+    TooManyLandsError,
+    InvalidPhaseForLandError,
 )
 from app.engine.phases import PhaseManager, create_action_result
 from app.engine.actions import CardManager, LifeManager, ManaManager, CombatManager, LandTapper
@@ -70,6 +72,15 @@ class GameEngine:
             raise InvalidZoneError("Card must be in hand or commander zone to play")
         
         player = self.phase_manager.get_player_by_id(card.player_id)
+        
+        is_land = card.type_line and "land" in card.type_line.lower()
+        
+        if is_land:
+            if not self.phase_manager.can_play_land():
+                raise InvalidPhaseForLandError("Lands can only be played during main phase")
+            if player.lands_played_this_turn >= 1:
+                raise TooManyLandsError("You may only play 1 land per turn")
+            player.lands_played_this_turn += 1
         
         if side_index is not None:
             card.played_as_side = side_index
@@ -242,6 +253,113 @@ class GameEngine:
             message=message,
         )
     
+    def get_valid_plays(self, player_id: int) -> dict:
+        """Get all valid plays for a player based on current game state.
+        
+        Args:
+            player_id: The ID of the player to get valid plays for
+            
+        Returns:
+            Dictionary with:
+                - current_phase: TurnPhase
+                - can_cast_spells: bool
+                - can_play_land: bool
+                - available_mana: dict of ManaColor -> int
+                - untapped_lands_count: int
+                - plays: list of dicts with card info and playability
+        """
+        from app.engine.models import Card
+        
+        player = self.phase_manager.get_player_by_id(player_id)
+        current_phase = self.game_state.current_phase
+        can_cast = self.phase_manager.can_cast_spells()
+        can_play_land = self.phase_manager.can_play_land() and player.lands_played_this_turn < 1
+        
+        available_mana = dict(player.mana_pool)
+        
+        land_tapper = LandTapper(player)
+        untapped_lands = land_tapper.get_untapped_lands()
+        untapped_lands_count = len(untapped_lands)
+        
+        playable_cards = []
+        
+        if can_cast or can_play_land:
+            all_cards = player.hand + player.commander
+            
+            for card in all_cards:
+                source_zone = CardZone.HAND if card in player.hand else CardZone.COMMANDER
+                
+                is_land = card.type_line and "land" in card.type_line.lower()
+                
+                if is_land:
+                    can_afford = can_play_land and self._can_afford_mana({}, player, land_tapper)
+                else:
+                    can_afford = can_cast
+                    if can_cast:
+                        needs_side_selection = card_needs_side_selection(card)
+                        
+                        if needs_side_selection:
+                            sides_info = get_card_sides_info(card)
+                            
+                            affordable_sides = []
+                            for side in sides_info:
+                                side_mana_cost = parse_mana_cost(side.get('mana_cost'))
+                                if self._can_afford_mana(side_mana_cost, player, land_tapper):
+                                    affordable_sides.append(side)
+                            
+                            can_afford = len(affordable_sides) > 0
+                        else:
+                            mana_cost = get_mana_cost_for_card(card)
+                            can_afford = self._can_afford_mana(mana_cost, player, land_tapper)
+                
+                playable_cards.append({
+                    'card_id': card.id,
+                    'card_name': card.card_name,
+                    'zone': source_zone.value,
+                    'mana_cost': card.mana_cost if not is_land else None,
+                    'can_afford_mana': can_afford,
+                    'needs_side_selection': False,
+                    'sides': None,
+                })
+        
+        return {
+            'current_phase': current_phase,
+            'can_cast_spells': can_cast,
+            'can_play_land': can_play_land,
+            'available_mana': {k.value: v for k, v in available_mana.items()},
+            'untapped_lands_count': untapped_lands_count,
+            'plays': playable_cards,
+        }
+    
+    def _can_afford_mana(self, needed_mana: dict, player: PlayerState, land_tapper: LandTapper) -> bool:
+        """Check if player can afford the mana cost.
+        
+        Args:
+            needed_mana: Dictionary of ManaColor -> amount needed
+            player: The player whose mana to check
+            land_tapper: LandTapper instance for checking land production
+            
+        Returns:
+            True if can afford, False otherwise
+        """
+        if not needed_mana:
+            return True
+        
+        pool = player.mana_pool
+        remaining = dict(needed_mana)
+        
+        for color, amount in remaining.items():
+            pool_amount = pool.get(color, 0)
+            if pool_amount >= amount:
+                remaining[color] = 0
+            else:
+                remaining[color] = amount - pool_amount
+        
+        if sum(v for v in remaining.values() if v > 0) == 0:
+            return True
+        
+        return land_tapper.can_produce_mana(remaining)
+    
     def adjust_life(self, player_id: int, amount: int) -> ActionResult:
         player, damage = self.life_manager.adjust_life(player_id, amount)
         
@@ -375,6 +493,7 @@ def create_engine_from_db(
             life_total=ps.life_total,
             poison_counters=ps.poison_counters,
             mana_pool=mana_pool,
+            lands_played_this_turn=ps.lands_played_this_turn or 0,
             library=library,
             hand=hand,
             battlefield=battlefield,
@@ -402,8 +521,16 @@ def create_engine_from_db(
 
 
 def sync_engine_to_db(engine: GameEngine, db_session) -> None:
-    from app.models.game_state import GameCard, PlayerGameState
+    from app.models.game_state import GameCard, PlayerGameState, GameState as DBGameState
     from app.engine.models import ManaColor
+    
+    db_game_state = db_session.query(DBGameState).filter(
+        DBGameState.id == engine.game_state.id
+    ).first()
+    if db_game_state:
+        db_game_state.current_phase = engine.game_state.current_phase.value
+        db_game_state.current_turn = engine.game_state.current_turn
+        db_game_state.active_player_id = engine.game_state.active_player_id
     
     for player in engine.game_state.players:
         db_player = db_session.query(PlayerGameState).filter(
@@ -418,6 +545,8 @@ def sync_engine_to_db(engine: GameEngine, db_session) -> None:
             db_player.red_mana = player.mana_pool.get(ManaColor.RED, 0)
             db_player.green_mana = player.mana_pool.get(ManaColor.GREEN, 0)
             db_player.colorless_mana = player.mana_pool.get(ManaColor.COLORLESS, 0)
+            db_player.is_active = player.is_active
+            db_player.lands_played_this_turn = player.lands_played_this_turn
         
         for zone_name in ["library", "hand", "battlefield", "graveyard", "exile", "commander"]:
             zone_cards = getattr(player, zone_name)

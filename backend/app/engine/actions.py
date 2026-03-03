@@ -564,3 +564,60 @@ class LandTapper:
                 )
         
         return produced
+
+    def can_produce_mana(self, needed: dict) -> bool:
+        """Check if mana can be produced without actually tapping lands.
+        
+        This is a simulation-only check that doesn't modify any state.
+        
+        Args:
+            needed: Dictionary of colors and amounts needed
+            
+        Returns:
+            True if mana can be produced, False otherwise
+        """
+        from app.engine.models import ManaColor
+        
+        needed = {k: v for k, v in needed.items() if v > 0}
+        
+        if not needed:
+            return True
+        
+        colored_mana = {k: v for k, v in needed.items() if k != ManaColor.COLORLESS}
+        colorless_mana = needed.get(ManaColor.COLORLESS, 0)
+        
+        untapped = self.get_untapped_lands()
+        untapped_sorted = sorted(untapped, key=self._get_land_priority)
+        
+        remaining = dict(colored_mana)
+        
+        for land in untapped_sorted:
+            if not remaining:
+                break
+            
+            land_colors = self._get_land_colors(land)
+            
+            for color in list(remaining.keys()):
+                if remaining.get(color, 0) > 0 and color in land_colors:
+                    remaining[color] = remaining.get(color, 0) - 1
+                    
+                    if remaining[color] <= 0:
+                        del remaining[color]
+                    
+                    break
+        
+        if remaining and sum(remaining.values()) > 0:
+            return False
+        
+        if colorless_mana > 0:
+            remaining_colorless = colorless_mana
+            for land in untapped_sorted:
+                if remaining_colorless <= 0:
+                    break
+                if not land.is_tapped:
+                    remaining_colorless -= 1
+            
+            if remaining_colorless > 0:
+                return False
+        
+        return True

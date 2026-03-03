@@ -40,6 +40,7 @@ class PlayerGameState(Base):
     red_mana: Mapped[int] = mapped_column(Integer, default=0)
     green_mana: Mapped[int] = mapped_column(Integer, default=0)
     colorless_mana: Mapped[int] = mapped_column(Integer, default=0)
+    lands_played_this_turn: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     game_state: Mapped["GameState"] = relationship("GameState", back_populates="players")

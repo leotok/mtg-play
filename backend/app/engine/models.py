@@ -131,6 +131,7 @@ class PlayerState(BaseModel):
     poison_counters: int = 0
     commander_damage: Dict[int, int] = Field(default_factory=dict)
     mana_pool: Dict[ManaColor, int] = Field(default_factory=dict)
+    lands_played_this_turn: int = 0
     
     library: List[Card] = Field(default_factory=list)
     hand: List[Card] = Field(default_factory=list)

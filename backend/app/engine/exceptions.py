@@ -51,3 +51,13 @@ class CardNotFoundError(GameActionError):
 class EmptyLibraryError(GameActionError):
     """Raised when trying to draw from an empty library"""
     pass
+
+
+class TooManyLandsError(GameActionError):
+    """Raised when player tries to play more than 1 land per turn"""
+    pass
+
+
+class InvalidPhaseForLandError(GameActionError):
+    """Raised when a land is played in an invalid phase"""
+    pass

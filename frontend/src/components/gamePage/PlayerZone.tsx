@@ -14,6 +14,7 @@ export const PlayerZone: React.FC<{
   player: PlayerGameState;
   isCurrentUser: boolean;
   isActive: boolean;
+  playableCardIds?: Set<number>;
   onTapCard?: (cardId: number) => void;
   onHoverCard?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null) => void;
   onMouseDownCard?: (card: GameCardInBattlefield, e: React.MouseEvent) => void;
@@ -42,7 +43,7 @@ export const PlayerZone: React.FC<{
   } | null;
   hoveredZone?: CardZone | null;
   selectedCardIds?: Set<number>;
-}> = ({ player, isCurrentUser, isActive, onTapCard, onHoverCard, onMouseDownCard, onMouseDownHand, onMouseDownCommander, onMouseDownGraveyard, onMouseDownExile, onMouseDownEmptyBattlefield, battlefieldRef, handRef, commanderRef, graveyardRef, exileRef, dragState, hoveredZone, selectedCardIds }) => {
+}> = ({ player, isCurrentUser, isActive, playableCardIds, onTapCard, onHoverCard, onMouseDownCard, onMouseDownHand, onMouseDownCommander, onMouseDownGraveyard, onMouseDownExile, onMouseDownEmptyBattlefield, battlefieldRef, handRef, commanderRef, graveyardRef, exileRef, dragState, hoveredZone, selectedCardIds }) => {
   const backgroundColor = isCurrentUser ? 'darkslateblue' : 'darkslategray';
 
   return (
@@ -71,6 +72,7 @@ export const PlayerZone: React.FC<{
           isCurrentUser={isCurrentUser}
           handRef={handRef}
           hoveredZone={hoveredZone}
+          playableCardIds={playableCardIds}
           dragState={dragState}
           onMouseDownHand={onMouseDownHand}
           onHoverCard={onHoverCard}
@@ -89,6 +91,7 @@ export const PlayerZone: React.FC<{
             player={player}
             commanderRef={commanderRef}
             hoveredZone={hoveredZone}
+            playableCardIds={playableCardIds}
             isCurrentUser={isCurrentUser}
             onMouseDownCommander={onMouseDownCommander}
             onHoverCard={onHoverCard}

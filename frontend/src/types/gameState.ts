@@ -141,3 +141,22 @@ export interface ChooseCardSideResponse {
   sides: CardSideOption[];
   requires_side_selection: boolean;
 }
+
+export interface ValidPlayCard {
+  card_id: number;
+  card_name: string;
+  zone: CardZone;
+  mana_cost?: string;
+  can_afford_mana: boolean;
+  needs_side_selection: boolean;
+  sides?: CardSideOption[];
+}
+
+export interface ValidPlaysResponse {
+  current_phase: TurnPhase;
+  can_cast_spells: boolean;
+  can_play_land: boolean;
+  available_mana: Record<string, number>;
+  untapped_lands_count: number;
+  plays: ValidPlayCard[];
+}

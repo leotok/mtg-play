@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import datetime
 from app.models.game import TurnPhase, CardZone
 
@@ -162,3 +162,22 @@ class ChooseCardSideResponse(BaseModel):
     card_name: str
     sides: List[CardSideOption]
     requires_side_selection: bool = True
+
+
+class ValidPlayCard(BaseModel):
+    card_id: int
+    card_name: str
+    zone: CardZone
+    mana_cost: Optional[str] = None
+    can_afford_mana: bool
+    needs_side_selection: bool = False
+    sides: Optional[List[CardSideOption]] = None
+
+
+class ValidPlaysResponse(BaseModel):
+    current_phase: TurnPhase
+    can_cast_spells: bool
+    can_play_land: bool
+    available_mana: Dict[str, int]
+    untapped_lands_count: int
+    plays: List[ValidPlayCard]

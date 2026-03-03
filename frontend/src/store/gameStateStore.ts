@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { apiClient } from '../services/apiClient';
-import type { GameState, GameLog, ChooseCardSideResponse } from '../types/gameState';
+import type { GameState, GameLog, ChooseCardSideResponse, ValidPlaysResponse } from '../types/gameState';
 
 type HoveredCard = GameState['players'][0]['hand'][0] | null;
 
@@ -13,9 +13,11 @@ interface GameStateStore {
   toast: { message: string; isVisible: boolean };
   hoveredCard: HoveredCard;
   sideSelection: ChooseCardSideResponse | null;
+  validPlays: ValidPlaysResponse | null;
   
   fetchGameState: (gameId: number) => Promise<void>;
   fetchGameLogs: (gameId: number) => Promise<void>;
+  fetchValidPlays: (gameId: number) => Promise<void>;
   drawCard: (gameId: number) => Promise<void>;
   untapAll: (gameId: number) => Promise<void>;
   playCard: (gameId: number, cardId: number, battlefieldX?: number, battlefieldY?: number, sideIndex?: number) => Promise<void>;
@@ -42,6 +44,7 @@ export const useGameStateStore = create<GameStateStore>((set) => ({
   toast: { message: '', isVisible: false },
   hoveredCard: null,
   sideSelection: null,
+  validPlays: null,
 
   showToast: (message: string) => set({ toast: { message, isVisible: true } }),
   hideToast: () => set({ toast: { message: '', isVisible: false } }),
@@ -69,6 +72,15 @@ export const useGameStateStore = create<GameStateStore>((set) => ({
       set({ gameLogs: response });
     } catch (err: any) {
       console.error('Failed to fetch game logs:', err);
+    }
+  },
+
+  fetchValidPlays: async (gameId: number) => {
+    try {
+      const response = await apiClient.get<ValidPlaysResponse>(`/games/${gameId}/valid-plays`);
+      set({ validPlays: response });
+    } catch (err: any) {
+      console.error('Failed to fetch valid plays:', err);
     }
   },
 
@@ -210,6 +222,6 @@ export const useGameStateStore = create<GameStateStore>((set) => ({
   },
 
   clearGameState: () => {
-    set({ gameState: null, gameId: null, error: null, sideSelection: null });
+    set({ gameState: null, gameId: null, error: null, sideSelection: null, validPlays: null });
   },
 }));

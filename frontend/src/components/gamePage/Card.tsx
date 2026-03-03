@@ -12,6 +12,7 @@ export const Card: React.FC<{
   hidden?: boolean;
   isDragging?: boolean;
   isSelected?: boolean;
+  isPlayable?: boolean;
   style?: React.CSSProperties;
   scale?: number;
   handIndex?: number; // Position in hand for angles (e.g., -2, -1, 0, 1, 2)
@@ -20,7 +21,7 @@ export const Card: React.FC<{
   inHand?: boolean;
   rotation?: number;
   top?: number;
-}> = ({ card, onTap, onMouseDown, onHover, size, hidden = false, isDragging = false, isSelected = false, style, scale, handIndex = 0, idx = 0, horizontalOffset = -40, inHand = false, rotation = 0, top = 0 }) => {
+}> = ({ card, onTap, onMouseDown, onHover, size, hidden = false, isDragging = false, isSelected = false, isPlayable = false, style, scale, handIndex = 0, idx = 0, horizontalOffset = -40, inHand = false, rotation = 0, top = 0 }) => {
   const { baseCardSize, cardScale } = useSettingsStore();
   const cardHeight = CARD_SIZES[size || baseCardSize].height * (cardScale / 100);
   const cardWidth = CARD_SIZES[size || baseCardSize].width * (cardScale / 100);
@@ -112,6 +113,9 @@ export const Card: React.FC<{
     }
     if (isHovered || isDragging) {
       return { boxShadow: '0 0 0 2px #fbbf24, 0 0 10px #fbbf24' };
+    }
+    if (isPlayable) {
+      return { boxShadow: '0 0 0 3px #3b82f6, 0 0 25px #3b82f6, 0 0 40px #3b82f6' };
     }
     return {};
   };

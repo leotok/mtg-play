@@ -62,6 +62,10 @@ class PhaseManager:
     def can_cast_spells(self) -> bool:
         return self.is_main_phase() or self.game_state.current_phase == TurnPhase.UPKEEP
     
+    def can_play_land(self) -> bool:
+        """Lands can only be played during Main1 or Main2."""
+        return self.is_main_phase()
+    
     def can_attack(self) -> bool:
         return self.game_state.current_phase == TurnPhase.COMBAT_ATTACK
     
@@ -89,6 +93,7 @@ class PhaseManager:
         
         for player in self.game_state.players:
             player.is_active = (player.user_id == next_player.user_id)
+            player.lands_played_this_turn = 0
         
         self.game_state.active_player_id = next_player.user_id
         self.game_state.active_player_username = next_player.username

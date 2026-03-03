@@ -12,6 +12,7 @@ export const HandCards: React.FC<{
     isCurrentUser: boolean;
     handRef?: React.RefObject<HTMLDivElement | null> | ((el: HTMLDivElement | null) => void);
     hoveredZone?: CardZone | null;
+    playableCardIds?: Set<number>;
     dragState?: {
         isDragging: boolean;
         cardId: number;
@@ -24,7 +25,7 @@ export const HandCards: React.FC<{
     } | null;
     onMouseDownHand?: (card: GameCard, e: React.MouseEvent) => void;
     onHoverCard?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null) => void;
-}> = ({player, isCurrentUser, handRef, hoveredZone, dragState, onMouseDownHand, onHoverCard }) => {
+}> = ({player, isCurrentUser, handRef, hoveredZone, playableCardIds, dragState, onMouseDownHand, onHoverCard }) => {
     const cardHeight = useSettingsStore(state => state.getCardHeight());
     const cardScale = useSettingsStore(state => state.cardScale);
     const handHeight = cardHeight * 0.7;
@@ -77,11 +78,13 @@ export const HandCards: React.FC<{
             {player.hand.map((card, idx) => {
                 const isDraggingThis = dragState?.isDragging && dragState?.cardId === card.id;
                 if (isDraggingThis) return null;
+                const isPlayable = playableCardIds?.has(card.id) ?? false;
                 return (
                 <Card 
                     key={card.id} 
                     card={card} 
                     size="sm"
+                    isPlayable={isPlayable}
                     onMouseDown={(e) => onMouseDownHand?.(card, e)}
                     onHover={onHoverCard}
                     handIndex={handIndexArray[idx]}

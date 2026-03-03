@@ -23,7 +23,9 @@ const GamePage: React.FC = () => {
     toast,
     hoveredCard,
     sideSelection,
+    validPlays,
     fetchGameState, 
+    fetchValidPlays,
     drawCard, 
     untapAll,
     playCard, 
@@ -89,12 +91,14 @@ const GamePage: React.FC = () => {
     
     const id = parseInt(gameId);
     fetchGameState(id);
+    fetchValidPlays(id);
 
     socketService.connect(user.id);
     socketService.joinGame(id);
 
     socketService.onGameStateUpdated(() => {
       fetchGameState(id);
+      fetchValidPlays(id);
     });
 
     return () => {
@@ -377,11 +381,12 @@ const GamePage: React.FC = () => {
         const bfRect = battlefieldRef.current.getBoundingClientRect();
         const isInsideBf = x >= bfRect.left && x <= bfRect.right && y >= bfRect.top && y <= bfRect.bottom;
 
-        if (isInsideBf) {
+          if (isInsideBf) {
           if (dragState.sourceZone === 'hand' || dragState.sourceZone === 'commander') {
             const localX = x - bfRect.left - dragState.mouseOffset.x;
             const localY = y - bfRect.top - dragState.mouseOffset.y;
             await playCard(gameIdNum, dragState.cardId, localX, localY);
+            await fetchValidPlays(gameIdNum);
             setDragState(null);
             return;
           }
@@ -587,12 +592,16 @@ const GamePage: React.FC = () => {
             })
             .map((player) => {
               const isCurrentUserPlayer = player.user_id === user?.id;
+              const playableCardIds = isCurrentUserPlayer && validPlays 
+                ? new Set(validPlays.plays.filter(p => p.can_afford_mana).map(p => p.card_id))
+                : new Set<number>();
               return (
                 <PlayerZone
                   key={player.id}
                   player={player}
                   isCurrentUser={isCurrentUserPlayer}
                   isActive={player.is_active}
+                  playableCardIds={playableCardIds}
                   onTapCard={isCurrentUserPlayer ? handleTapCard : undefined}
                   onHoverCard={(card) => setHoveredCard(card)}
                   onMouseDownCard={isCurrentUserPlayer ? handleMouseDownBattlefield : undefined}
@@ -654,7 +663,9 @@ const GamePage: React.FC = () => {
           sides={sideSelection.sides}
           onSelect={(sideIndex) => {
             if (gameId) {
-              playCard(parseInt(gameId), sideSelection.card_id, undefined, undefined, sideIndex);
+              playCard(parseInt(gameId), sideSelection.card_id, undefined, undefined, sideIndex).then(() => {
+                fetchValidPlays(parseInt(gameId));
+              });
             }
             clearSideSelection();
           }}

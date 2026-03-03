@@ -8,6 +8,7 @@ export const CommanderZone: React.FC<{
     player: PlayerGameState; 
     commanderRef?: React.RefObject<HTMLDivElement | null> | ((el: HTMLDivElement | null) => void);
     hoveredZone?: CardZone | null;
+    playableCardIds?: Set<number>;
     isCurrentUser: boolean;
     onMouseDownCommander?: (card: GameCard, e: React.MouseEvent) => void;
     onHoverCard?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null) => void;
@@ -17,7 +18,7 @@ export const CommanderZone: React.FC<{
         sourceZone: CardZone;
     } | null;
     className?: string;
-}> = ({ player, commanderRef, hoveredZone, isCurrentUser, onMouseDownCommander, onHoverCard, dragState, className = '' }) => {
+}> = ({ player, commanderRef, hoveredZone, playableCardIds, isCurrentUser, onMouseDownCommander, onHoverCard, dragState, className = '' }) => {
     const cardHeight = useSettingsStore(state => state.getCardHeight());
     const cardWidth = useSettingsStore(state => state.getCardWidth());
     
@@ -41,11 +42,13 @@ export const CommanderZone: React.FC<{
                             
                             if (isDraggingTop && player.commander.length > 1) {
                                 const cardBelow = player.commander[1];
+                                const isPlayable = playableCardIds?.has(cardBelow.id) ?? false;
                                 return (
                                     <Card 
                                         key={cardBelow.id} 
                                         card={cardBelow} 
                                         size="sm"
+                                        isPlayable={isPlayable}
                                         onMouseDown={isCurrentUser ? (e) => onMouseDownCommander?.(cardBelow, e) : undefined}
                                         onHover={onHoverCard}
                                     />
@@ -58,11 +61,13 @@ export const CommanderZone: React.FC<{
                                 );
                             }
                             
+                            const isPlayableTop = playableCardIds?.has(topCard.id) ?? false;
                             return (
                                 <Card 
                                     key={topCard.id} 
                                     card={topCard} 
                                     size="sm"
+                                    isPlayable={isPlayableTop}
                                     onMouseDown={isCurrentUser ? (e) => onMouseDownCommander?.(topCard, e) : undefined}
                                     onHover={onHoverCard}
                                 />
