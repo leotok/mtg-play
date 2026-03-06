@@ -652,6 +652,7 @@ def sync_engine_to_db(engine: GameEngine, db_session) -> None:
             db_player.red_mana = player.mana_pool.get(ManaColor.RED, 0)
             db_player.green_mana = player.mana_pool.get(ManaColor.GREEN, 0)
             db_player.colorless_mana = player.mana_pool.get(ManaColor.COLORLESS, 0)
+            db_player.life_total = player.life_total
             db_player.is_active = player.is_active
             db_player.lands_played_this_turn = player.lands_played_this_turn
         

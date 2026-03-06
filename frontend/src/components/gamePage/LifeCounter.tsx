@@ -2,10 +2,17 @@ import { useState, useEffect } from "react";
 import type { PlayerGameState } from "../../types/gameState";
 import { useGameStateStore } from "../../store/gameStateStore";
 
-export const LifeCounter: React.FC<{ player: PlayerGameState }> = ({ player }) => {
+interface LifeCounterProps {
+    player: PlayerGameState;
+    gameMode?: string;
+}
+
+export const LifeCounter: React.FC<LifeCounterProps> = ({ player, gameMode }) => {
     const { gameId, adjustLife } = useGameStateStore();
     const [inputValue, setInputValue] = useState(player.life_total.toString());
     const [isEditing, setIsEditing] = useState(false);
+
+    const isManualMode = gameMode === 'manual';
 
     useEffect(() => {
         if (!isEditing) {
@@ -14,7 +21,7 @@ export const LifeCounter: React.FC<{ player: PlayerGameState }> = ({ player }) =
     }, [player.life_total, isEditing]);
 
     const handleAdjustLife = (amount: number) => {
-        if (gameId) {
+        if (gameId && isManualMode) {
             adjustLife(gameId, amount);
         }
     };
@@ -28,7 +35,7 @@ export const LifeCounter: React.FC<{ player: PlayerGameState }> = ({ player }) =
         const newLife = parseInt(inputValue, 10);
         if (!isNaN(newLife) && newLife >= 0 && newLife !== player.life_total) {
             const diff = newLife - player.life_total;
-            if (gameId) {
+            if (gameId && isManualMode) {
                 adjustLife(gameId, diff);
             }
         } else {
@@ -42,6 +49,16 @@ export const LifeCounter: React.FC<{ player: PlayerGameState }> = ({ player }) =
             handleInputBlur();
         }
     };
+
+    if (!isManualMode) {
+        return (
+            <div className="absolute top-2 right-2 z-10 bg-gray-900/80 rounded-lg px-2 py-1">
+                <span className={`font-bold text-sm px-1 ${player.life_total <= 10 ? 'text-red-400' : 'text-white'}`}>
+                    {player.life_total}
+                </span>
+            </div>
+        );
+    }
 
     return (
         <div className="absolute top-2 right-2 z-10 bg-gray-900/80 rounded-lg px-2 py-1 flex items-center">

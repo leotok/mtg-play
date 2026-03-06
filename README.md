@@ -154,12 +154,12 @@ uv run alembic downgrade -1
 - ✅ Game board UI with drag-and-drop
 - ✅ Card multi-selection drag-and-drop
 - ✅ Game action logs
+- ✅ Use socket.io for real-time game state synchronization during gameplay
 - Stack/rearrange cards in battlefield
 - Rearrange cards in hand
 - Add counters to permanents
 - Tokens creation
 - Library management (shuffle, draw, mill, search, seek, reveal)
-- Use socket.io for real-time game state synchronization during gameplay
 
 ### Phase 2: Game Complexity
 - ✅ Mana system

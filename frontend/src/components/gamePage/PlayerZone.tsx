@@ -16,6 +16,7 @@ export const PlayerZone: React.FC<{
   player: PlayerGameState;
   isCurrentUser: boolean;
   isActive: boolean;
+  gameMode?: string;
   playableCardIds?: Set<number>;
   onTapCard?: (cardId: number, e: React.MouseEvent) => void;
   onHoverCard?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null) => void;
@@ -45,7 +46,7 @@ export const PlayerZone: React.FC<{
   } | null;
   hoveredZone?: CardZone | null;
   selectedCardIds?: Set<number>;
-}> = ({ player, isCurrentUser, isActive, playableCardIds, onTapCard, onHoverCard, onMouseDownCard, onMouseDownHand, onMouseDownCommander, onMouseDownGraveyard, onMouseDownExile, onMouseDownEmptyBattlefield, battlefieldRef, handRef, commanderRef, graveyardRef, exileRef, dragState, hoveredZone, selectedCardIds }) => {
+}> = ({ player, isCurrentUser, isActive, gameMode, playableCardIds, onTapCard, onHoverCard, onMouseDownCard, onMouseDownHand, onMouseDownCommander, onMouseDownGraveyard, onMouseDownExile, onMouseDownEmptyBattlefield, battlefieldRef, handRef, commanderRef, graveyardRef, exileRef, dragState, hoveredZone, selectedCardIds }) => {
   const backgroundColor = isCurrentUser ? 'darkslateblue' : 'darkslategray';
 
   return (
@@ -54,7 +55,7 @@ export const PlayerZone: React.FC<{
       style={{backgroundColor}}
     >
       
-      <LifeCounter player={player} />
+      <LifeCounter player={player} gameMode={gameMode} />
 
       <ManaPool player={player} isCurrentUser={isCurrentUser} />
 

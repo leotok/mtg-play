@@ -682,6 +682,7 @@ const GamePage: React.FC = () => {
                   player={player}
                   isCurrentUser={isCurrentUserPlayer}
                   isActive={player.is_active}
+                  gameMode={gameState?.game_mode}
                   playableCardIds={playableCardIds}
                   onTapCard={isCurrentUserPlayer ? handleTapCard : undefined}
                   onHoverCard={(card) => setHoveredCard(card)}
