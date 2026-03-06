@@ -183,6 +183,30 @@ class SocketService {
     }
   }
 
+  onManaChanged(callback: (data: { game_id: number; user_id: number; color: string; amount: number }) => void) {
+    if (this.socket) {
+      this.socket.on('mana_changed', callback);
+    }
+  }
+
+  onLifeChanged(callback: (data: { game_id: number; user_id: number; new_life: number }) => void) {
+    if (this.socket) {
+      this.socket.on('life_changed', callback);
+    }
+  }
+
+  onPhaseChanged(callback: (data: { game_id: number; phase: string; turn: number; active_player_id: number }) => void) {
+    if (this.socket) {
+      this.socket.on('phase_changed', callback);
+    }
+  }
+
+  onCardPositionChanged(callback: (data: { game_id: number; card_id: number; x: number; y: number }) => void) {
+    if (this.socket) {
+      this.socket.on('card_position_changed', callback);
+    }
+  }
+
   removeAllListeners() {
     if (this.socket) {
       this.socket.removeAllListeners();

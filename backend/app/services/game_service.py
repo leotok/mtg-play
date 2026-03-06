@@ -117,6 +117,87 @@ class GameService:
         users = self.game_state_repo.db.query(User).filter(User.id.in_(user_ids)).all()
         return {u.id: u.username for u in users}
     
+    async def _emit_game_state_updated(self, game_id: int) -> None:
+        """Emit socket event to notify all players of game state update."""
+        sio = get_sio()
+        if sio:
+            await sio.emit("game_state_updated", {"game_id": game_id}, room=f"game_{game_id}")
+    
+    async def _emit_card_played(self, game_id: int, user_id: int, card_id: int) -> None:
+        """Emit card_played event."""
+        sio = get_sio()
+        if sio:
+            await sio.emit("card_played", {
+                "game_id": game_id,
+                "user_id": user_id,
+                "card_id": card_id
+            }, room=f"game_{game_id}")
+    
+    async def _emit_card_moved(self, game_id: int, user_id: int, card_id: int, from_zone: str, to_zone: str) -> None:
+        """Emit card_moved event."""
+        sio = get_sio()
+        if sio:
+            await sio.emit("card_moved", {
+                "game_id": game_id,
+                "user_id": user_id,
+                "card_id": card_id,
+                "from_zone": from_zone,
+                "to_zone": to_zone
+            }, room=f"game_{game_id}")
+    
+    async def _emit_card_tapped(self, game_id: int, card_id: int, is_tapped: bool) -> None:
+        """Emit card_tapped event."""
+        sio = get_sio()
+        if sio:
+            await sio.emit("card_tapped", {
+                "game_id": game_id,
+                "card_id": card_id,
+                "is_tapped": is_tapped
+            }, room=f"game_{game_id}")
+    
+    async def _emit_mana_changed(self, game_id: int, user_id: int, color: str, amount: int) -> None:
+        """Emit mana_changed event."""
+        sio = get_sio()
+        if sio:
+            await sio.emit("mana_changed", {
+                "game_id": game_id,
+                "user_id": user_id,
+                "color": color,
+                "amount": amount
+            }, room=f"game_{game_id}")
+    
+    async def _emit_life_changed(self, game_id: int, user_id: int, new_life: int) -> None:
+        """Emit life_changed event."""
+        sio = get_sio()
+        if sio:
+            await sio.emit("life_changed", {
+                "game_id": game_id,
+                "user_id": user_id,
+                "new_life": new_life
+            }, room=f"game_{game_id}")
+    
+    async def _emit_phase_changed(self, game_id: int, phase: str, turn: int, active_player_id: int) -> None:
+        """Emit phase_changed event."""
+        sio = get_sio()
+        if sio:
+            await sio.emit("phase_changed", {
+                "game_id": game_id,
+                "phase": phase,
+                "turn": turn,
+                "active_player_id": active_player_id
+            }, room=f"game_{game_id}")
+    
+    async def _emit_card_position_changed(self, game_id: int, card_id: int, x: float, y: float) -> None:
+        """Emit card_position_changed event."""
+        sio = get_sio()
+        if sio:
+            await sio.emit("card_position_changed", {
+                "game_id": game_id,
+                "card_id": card_id,
+                "x": x,
+                "y": y
+            }, room=f"game_{game_id}")
+    
     async def create_game(
         self,
         game_data: GameRoomCreate,
@@ -682,6 +763,8 @@ class GameService:
                     message=f"{current_user.username} drew a card"
                 )
         
+        await self._emit_game_state_updated(game_id)
+        
         return await self.get_game_state(game_id, current_user)
     
     async def play_card(
@@ -815,6 +898,9 @@ class GameService:
                     from_zone=from_zone,
                     to_zone=target_zone.value
                 )
+        
+        await self._emit_card_played(game_id, current_user.id, card_id)
+        await self._emit_game_state_updated(game_id)
         
         return await self.get_game_state(game_id, current_user)
     
@@ -982,8 +1068,11 @@ class GameService:
                     to_zone=target_zone.value
                 )
         
+        await self._emit_card_moved(game_id, current_user.id, card_id, from_zone, target_zone.value)
+        await self._emit_game_state_updated(game_id)
+        
         return await self.get_game_state(game_id, current_user)
-    
+
     async def move_cards(
         self,
         game_id: int,
@@ -1111,6 +1200,8 @@ class GameService:
                         message=f"{current_user.username} moved {card_count} cards to {cards[0].target_zone.value}"
                     )
         
+        await self._emit_game_state_updated(game_id)
+        
         return await self.get_game_state(game_id, current_user)
     
     async def tap_card(
@@ -1237,8 +1328,11 @@ class GameService:
                     card_name=card.card_name
                 )
         
+        await self._emit_card_tapped(game_id, card_id, not was_tapped)
+        await self._emit_game_state_updated(game_id)
+        
         return await self.get_game_state(game_id, current_user)
-    
+
     async def get_land_colors(
         self,
         game_id: int,
@@ -1402,8 +1496,12 @@ class GameService:
                     card_name=card.card_name
                 )
         
+        await self._emit_card_tapped(game_id, card_id, True)
+        await self._emit_mana_changed(game_id, player_state.user_id, mana_color.value, 1)
+        await self._emit_game_state_updated(game_id)
+        
         return await self.get_game_state(game_id, current_user)
-    
+
     async def update_battlefield_position(
         self,
         game_id: int,
@@ -1457,6 +1555,9 @@ class GameService:
         
         self.game_card_repo.update_battlefield_position(card_id, x, y)
         
+        await self._emit_card_position_changed(game_id, card_id, x, y)
+        await self._emit_game_state_updated(game_id)
+        
         return await self.get_game_state(game_id, current_user)
     
     async def pass_priority(
@@ -1505,10 +1606,6 @@ class GameService:
             result = engine.pass_priority()
             
             sync_engine_to_db(engine, self.game_state_repo.db)
-            
-            sio = get_sio()
-            if sio:
-                await sio.emit("game_state_updated", {"game_id": game_id}, room=f"game_{game_id}")
             
             if self.game_log_repo:
                 if result.turn_changed:
@@ -1587,6 +1684,17 @@ class GameService:
                         message=f"{current_user.username} passed priority → {next_phase.value.replace('_', ' ').title()}"
                     )
         
+        if self._use_engine(game):
+            active_player = next((p for p in player_states if p.is_active), None)
+            active_player_id = active_player.user_id if active_player else 0
+            await self._emit_phase_changed(game_id, engine.game_state.current_phase.value, engine.game_state.current_turn, active_player_id)
+        else:
+            active_player = next((p for p in player_states if p.is_active), None)
+            active_player_id = active_player.user_id if active_player else 0
+            await self._emit_phase_changed(game_id, game_state.current_phase, game_state.current_turn, active_player_id)
+        
+        await self._emit_game_state_updated(game_id)
+        
         return await self.get_game_state(game_id, current_user)
 
     async def untap_all(
@@ -1663,8 +1771,10 @@ class GameService:
                     message=f"{current_user.username} untaps all"
                 )
         
+        await self._emit_game_state_updated(game_id)
+        
         return await self.get_game_state(game_id, current_user)
-    
+
     async def adjust_life(
         self,
         game_id: int,
@@ -1736,8 +1846,12 @@ class GameService:
                     message=message
                 )
         
+        new_life = player_state.life_total
+        await self._emit_life_changed(game_id, player_state.user_id, new_life)
+        await self._emit_game_state_updated(game_id)
+        
         return await self.get_game_state(game_id, current_user)
-    
+
     async def add_mana(
         self,
         game_id: int,
@@ -1809,8 +1923,11 @@ class GameService:
                         message=f"{current_user.username} added {amount} {mana_color.value} mana"
                     )
         
+        await self._emit_mana_changed(game_id, player_state.user_id, mana_color.value, amount)
+        await self._emit_game_state_updated(game_id)
+        
         return await self.get_game_state(game_id, current_user)
-    
+
     async def get_game_logs(
         self,
         game_id: int,

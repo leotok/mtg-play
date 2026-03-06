@@ -19,6 +19,7 @@ const GamePage: React.FC = () => {
   const { user } = useAuth();
   const { 
     gameState, 
+    setGameState,
     isLoading, 
     error, 
     toast,
@@ -124,6 +125,22 @@ const GamePage: React.FC = () => {
     socketService.onGameStateUpdated(() => {
       fetchGameState(id);
       fetchValidPlays(id);
+    });
+
+    socketService.onCardPositionChanged((data) => {
+      if (data.game_id === id && gameState) {
+        setGameState({
+          ...gameState,
+          players: gameState.players.map(player => ({
+            ...player,
+            battlefield: player.battlefield.map(card =>
+              card.id === data.card_id
+                ? { ...card, battlefield_x: data.x, battlefield_y: data.y }
+                : card
+            )
+          }))
+        });
+      }
     });
 
     return () => {
