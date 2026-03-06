@@ -484,3 +484,221 @@ class TestSummoningSickness:
         assert result.turn_changed
         assert player1_creature.is_summoning_sick
         assert not player2_creature.is_summoning_sick
+
+
+class TestHybridManaAffordability:
+    """Test hybrid mana cost affordability checking."""
+    
+    def create_card_with_mana(self, card_id, card_name, zone, player_id, mana_cost, type_line="Creature"):
+        return Card(
+            id=card_id,
+            card_scryfall_id=f"test-{card_id}",
+            card_name=card_name,
+            mana_cost=mana_cost,
+            cmc=None,
+            type_line=type_line,
+            oracle_text=None,
+            colors=None,
+            power="2",
+            toughness="2",
+            keywords=None,
+            image_uris=None,
+            card_faces=None,
+            zone=zone,
+            position=0,
+            is_tapped=False,
+            is_face_up=True,
+            battlefield_x=None,
+            battlefield_y=None,
+            is_attacking=False,
+            is_blocking=False,
+            is_summoning_sick=True,
+            damage_received=0,
+            player_id=player_id,
+        )
+    
+    def create_land_card(self, card_id, card_name, player_id, type_line="Basic Land"):
+        return Card(
+            id=card_id,
+            card_scryfall_id=f"test-{card_id}",
+            card_name=card_name,
+            mana_cost=None,
+            cmc=None,
+            type_line=type_line,
+            oracle_text=None,
+            colors=None,
+            power=None,
+            toughness=None,
+            keywords=None,
+            image_uris=None,
+            card_faces=None,
+            zone=CardZone.BATTLEFIELD,
+            position=0,
+            is_tapped=False,
+            is_face_up=True,
+            battlefield_x=None,
+            battlefield_y=None,
+            is_attacking=False,
+            is_blocking=False,
+            is_summoning_sick=False,
+            damage_received=0,
+            player_id=player_id,
+        )
+    
+    def test_cannot_afford_hybrid_with_insufficient_lands(self):
+        """Test that player cannot cast card with {B/R}{B/R}{1} having only 2 lands."""
+        player1 = PlayerState(
+            id=1,
+            user_id=1,
+            username="Player1",
+            player_order=0,
+            is_active=True,
+            life_total=40,
+            poison_counters=0,
+            library=[],
+            hand=[self.create_card_with_mana(10, "HybridCreature", CardZone.HAND, 1, "{B/R}{B/R}{1}")],
+            battlefield=[
+                self.create_land_card(20, "Mountain", 1, "Land"),
+                self.create_land_card(21, "Swamp", 1, "Land"),
+            ],
+            graveyard=[],
+            exile=[],
+            commander=[],
+        )
+        
+        game_state = GameStateData(
+            id=1,
+            game_room_id=1,
+            current_turn=1,
+            active_player_id=1,
+            active_player_username="Player1",
+            current_phase=TurnPhase.MAIN1,
+            starting_player_id=1,
+            players=[player1],
+            created_at=datetime.now(),
+        )
+        
+        engine = GameEngine(game_state)
+        
+        from app.engine.exceptions import InsufficientResourcesError
+        
+        with pytest.raises(InsufficientResourcesError):
+            engine.play_card(card_id=10, target_zone=CardZone.BATTLEFIELD)
+    
+    def test_can_afford_hybrid_with_sufficient_lands(self):
+        """Test that player can cast card with {B/R}{B/R}{1} having 3 lands."""
+        player1 = PlayerState(
+            id=1,
+            user_id=1,
+            username="Player1",
+            player_order=0,
+            is_active=True,
+            life_total=40,
+            poison_counters=0,
+            library=[],
+            hand=[self.create_card_with_mana(10, "HybridCreature", CardZone.HAND, 1, "{B/R}{B/R}{1}")],
+            battlefield=[
+                self.create_land_card(20, "Mountain", 1, "Land"),
+                self.create_land_card(21, "Swamp", 1, "Land"),
+                self.create_land_card(22, "Forest", 1, "Land"),
+            ],
+            graveyard=[],
+            exile=[],
+            commander=[],
+        )
+        
+        game_state = GameStateData(
+            id=1,
+            game_room_id=1,
+            current_turn=1,
+            active_player_id=1,
+            active_player_username="Player1",
+            current_phase=TurnPhase.MAIN1,
+            starting_player_id=1,
+            players=[player1],
+            created_at=datetime.now(),
+        )
+        
+        engine = GameEngine(game_state)
+        
+        result = engine.play_card(card_id=10, target_zone=CardZone.BATTLEFIELD)
+        
+        assert result.success
+        assert len(engine.game_state.players[0].hand) == 0
+        assert len(engine.game_state.players[0].battlefield) == 4
+    
+    def test_can_afford_single_hybrid_with_one_land(self):
+        """Test that player can cast card with {B/R}{1} having 2 lands."""
+        player1 = PlayerState(
+            id=1,
+            user_id=1,
+            username="Player1",
+            player_order=0,
+            is_active=True,
+            life_total=40,
+            poison_counters=0,
+            library=[],
+            hand=[self.create_card_with_mana(10, "HybridCreature", CardZone.HAND, 1, "{B/R}{1}")],
+            battlefield=[
+                self.create_land_card(20, "Mountain", 1, "Land"),
+                self.create_land_card(21, "Forest", 1, "Land"),
+            ],
+            graveyard=[],
+            exile=[],
+            commander=[],
+        )
+        
+        game_state = GameStateData(
+            id=1,
+            game_room_id=1,
+            current_turn=1,
+            active_player_id=1,
+            active_player_username="Player1",
+            current_phase=TurnPhase.MAIN1,
+            starting_player_id=1,
+            players=[player1],
+            created_at=datetime.now(),
+        )
+        
+        engine = GameEngine(game_state)
+        
+        result = engine.play_card(card_id=10, target_zone=CardZone.BATTLEFIELD)
+        
+        assert result.success
+    
+    def test_cannot_afford_hybrid_with_no_lands(self):
+        """Test that player cannot cast card with hybrid mana having no lands."""
+        player1 = PlayerState(
+            id=1,
+            user_id=1,
+            username="Player1",
+            player_order=0,
+            is_active=True,
+            life_total=40,
+            poison_counters=0,
+            library=[],
+            hand=[self.create_card_with_mana(10, "HybridCreature", CardZone.HAND, 1, "{B/R}{1}")],
+            battlefield=[],
+            graveyard=[],
+            exile=[],
+            commander=[],
+        )
+        
+        game_state = GameStateData(
+            id=1,
+            game_room_id=1,
+            current_turn=1,
+            active_player_id=1,
+            active_player_username="Player1",
+            current_phase=TurnPhase.MAIN1,
+            starting_player_id=1,
+            players=[player1],
+            created_at=datetime.now(),
+        )
+        
+        engine = GameEngine(game_state)
+        
+        from app.engine.exceptions import InsufficientResourcesError
+        
+        with pytest.raises(InsufficientResourcesError):
+            engine.play_card(card_id=10, target_zone=CardZone.BATTLEFIELD)

@@ -21,6 +21,7 @@ from app.engine.exceptions import (
     EmptyLibraryError,
     TooManyLandsError,
     InvalidPhaseForLandError,
+    InsufficientResourcesError,
 )
 from app.engine.phases import PhaseManager, create_action_result
 from app.engine.actions import CardManager, LifeManager, ManaManager, CombatManager, LandTapper
@@ -85,12 +86,19 @@ class GameEngine:
         if side_index is not None:
             card.played_as_side = side_index
         
-        needed_mana = get_mana_cost_for_card(card)
+        needed_mana, hybrid_options = get_mana_cost_for_card(card)
         
-        if needed_mana:
+        if needed_mana or hybrid_options:
+            land_tapper = LandTapper(player)
+            
+            if not self._can_afford_mana(needed_mana, hybrid_options, player, land_tapper):
+                raise InsufficientResourcesError("Not enough mana to play this card")
+            
             pool = player.mana_pool
             
             for color, amount in needed_mana.items():
+                if color == ManaColor.COLORLESS:
+                    continue
                 pool_amount = pool.get(color, 0)
                 if pool_amount >= amount:
                     pool[color] = pool_amount - amount
@@ -99,11 +107,28 @@ class GameEngine:
                     needed_mana[color] = amount - pool_amount
                     pool[color] = 0
             
-            remaining_needed = sum(v for v in needed_mana.values() if v > 0)
+            remaining_needed = {k: v for k, v in needed_mana.items() if v > 0}
             
-            if remaining_needed > 0:
-                land_tapper = LandTapper(player)
-                land_tapper.tap_lands_for_mana(needed_mana)
+            tapped_lands = []
+            for hybrid_choice in hybrid_options:
+                colors_in_hybrid = list(hybrid_choice)
+                paid_from_pool = False
+                
+                for color in colors_in_hybrid:
+                    if pool.get(color, 0) > 0:
+                        pool[color] = pool.get(color, 0) - 1
+                        paid_from_pool = True
+                        break
+                
+                if not paid_from_pool:
+                    try:
+                        result = land_tapper.tap_lands_for_mana({colors_in_hybrid[0]: 1})
+                        tapped_lands.extend([k for k, v in result.items() if v > 0])
+                    except:
+                        pass
+            
+            if remaining_needed:
+                land_tapper.tap_lands_for_mana(remaining_needed)
         
         from_zone = CardZone(card.zone)
         
@@ -292,7 +317,7 @@ class GameEngine:
                 is_land = card.type_line and "land" in card.type_line.lower()
                 
                 if is_land:
-                    can_afford = can_play_land and self._can_afford_mana({}, player, land_tapper)
+                    can_afford = can_play_land and self._can_afford_mana({}, [], player, land_tapper)
                 else:
                     can_afford = can_cast
                     if can_cast:
@@ -303,14 +328,14 @@ class GameEngine:
                             
                             affordable_sides = []
                             for side in sides_info:
-                                side_mana_cost = parse_mana_cost(side.get('mana_cost'))
-                                if self._can_afford_mana(side_mana_cost, player, land_tapper):
+                                regular_mana, hybrid_options = parse_mana_cost(side.get('mana_cost'))
+                                if self._can_afford_mana(regular_mana, hybrid_options, player, land_tapper):
                                     affordable_sides.append(side)
                             
                             can_afford = len(affordable_sides) > 0
                         else:
-                            mana_cost = get_mana_cost_for_card(card)
-                            can_afford = self._can_afford_mana(mana_cost, player, land_tapper)
+                            regular_mana, hybrid_options = get_mana_cost_for_card(card)
+                            can_afford = self._can_afford_mana(regular_mana, hybrid_options, player, land_tapper)
                 
                 playable_cards.append({
                     'card_id': card.id,
@@ -331,34 +356,72 @@ class GameEngine:
             'plays': playable_cards,
         }
     
-    def _can_afford_mana(self, needed_mana: dict, player: PlayerState, land_tapper: LandTapper) -> bool:
+    def _can_afford_mana(self, needed_mana: dict, hybrid_options: list, player: PlayerState, land_tapper: LandTapper) -> bool:
         """Check if player can afford the mana cost.
         
         Args:
             needed_mana: Dictionary of ManaColor -> amount needed
+            hybrid_options: List of sets representing hybrid/payment alternatives
             player: The player whose mana to check
             land_tapper: LandTapper instance for checking land production
             
         Returns:
             True if can afford, False otherwise
         """
-        if not needed_mana:
+        if not needed_mana and not hybrid_options:
             return True
         
         pool = player.mana_pool
-        remaining = dict(needed_mana)
         
-        for color, amount in remaining.items():
-            pool_amount = pool.get(color, 0)
-            if pool_amount >= amount:
-                remaining[color] = 0
-            else:
-                remaining[color] = amount - pool_amount
+        colorless_needed = needed_mana.get(ManaColor.COLORLESS, 0)
+        hybrid_count = len(hybrid_options)
+        total_mana_needed = colorless_needed + hybrid_count
         
-        if sum(v for v in remaining.values() if v > 0) == 0:
-            return True
+        available_sources = len(land_tapper.get_untapped_lands())
         
-        return land_tapper.can_produce_mana(remaining)
+        if available_sources < total_mana_needed:
+            return False
+        
+        phyrexian_count = sum(1 for opts in hybrid_options if len(opts) == 1)
+        
+        if not hybrid_options:
+            remaining = dict(needed_mana)
+            
+            for color, amount in remaining.items():
+                pool_amount = pool.get(color, 0)
+                if pool_amount >= amount:
+                    remaining[color] = 0
+                else:
+                    remaining[color] = amount - pool_amount
+            
+            if sum(v for v in remaining.values() if v > 0) == 0:
+                return True
+            
+            return land_tapper.can_produce_mana(remaining)
+        
+        for hybrid_choice in hybrid_options:
+            remaining = dict(needed_mana)
+            life_payment = phyrexian_count * 2
+            
+            for color in hybrid_choice:
+                pool_amount = pool.get(color, 0)
+                if pool_amount >= remaining.get(color, 0):
+                    remaining[color] = 0
+                else:
+                    remaining[color] = remaining.get(color, 0) - pool_amount
+            
+            remaining_life_cost = sum(v for v in remaining.values() if v > 0)
+            
+            if remaining_life_cost == 0:
+                return True
+            
+            if life_payment > 0 and player.life_total >= life_payment:
+                return True
+            
+            if land_tapper.can_produce_mana(remaining):
+                return True
+        
+        return False
     
     def adjust_life(self, player_id: int, amount: int) -> ActionResult:
         player, damage = self.life_manager.adjust_life(player_id, amount)

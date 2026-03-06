@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Set, Tuple
 from enum import Enum
 from datetime import datetime
 
@@ -48,19 +48,27 @@ MANA_SYMBOL_MAP = {
 }
 
 
-def parse_mana_cost(mana_cost: Optional[str]) -> Dict[ManaColor, int]:
-    """Parse a MTG mana cost string into a dictionary of color amounts.
+def parse_mana_cost(mana_cost: Optional[str]) -> Tuple[Dict[ManaColor, int], List[Set[ManaColor]]]:
+    """Parse a MTG mana cost string into a dictionary of color amounts and hybrid options.
     
+    Returns:
+        Tuple of (regular_mana, hybrid_options)
+        - regular_mana: Dict mapping ManaColor to amount needed
+        - hybrid_options: List of sets representing hybrid/payment alternatives
+        
     Examples:
-        "{W}{U}{2}" -> {WHITE: 1, BLUE: 1, COLORLESS: 2}
-        "{3}{R}{R}" -> {COLORLESS: 3, RED: 2}
-        "{B}{B}{G}" -> {BLACK: 2, GREEN: 1}
-        None or "" -> {}
+        "{W}{U}{2}" -> ({WHITE: 1, BLUE: 1, COLORLESS: 2}, [])
+        "{3}{R}{R}" -> ({COLORLESS: 3, RED: 2}, [])
+        "{B/R}" -> ({}, [{BLACK, RED}])
+        "{2}{B/R}" -> ({COLORLESS: 2}, [{BLACK, RED}])
+        "{W/P}" -> ({}, [{WHITE}])  # phyrexian - can pay white OR 1 life
+        None or "" -> ({}, [])
     """
     if not mana_cost:
-        return {}
+        return ({}, [])
     
     result: Dict[ManaColor, int] = {}
+    hybrid_options: List[Set[ManaColor]] = []
     
     import re
     symbols = re.findall(r'\{[^}]+\}', mana_cost)
@@ -76,11 +84,23 @@ def parse_mana_cost(mana_cost: Optional[str]) -> Dict[ManaColor, int]:
         elif symbol == "X" or symbol == "XRR" or symbol.startswith("X"):
             pass
         elif "/" in symbol:
-            pass
-        else:
-            pass
+            parts = symbol.split("/")
+            hybrid_colors: Set[ManaColor] = set()
+            
+            for part in parts:
+                if part in MANA_SYMBOL_MAP:
+                    color = MANA_SYMBOL_MAP[part]
+                    if color != ManaColor.COLORLESS:
+                        hybrid_colors.add(color)
+                elif part.isdigit():
+                    result[ManaColor.COLORLESS] = result.get(ManaColor.COLORLESS, 0) + int(part)
+            
+            if len(hybrid_colors) >= 2:
+                hybrid_options.append(hybrid_colors)
+            elif len(hybrid_colors) == 1:
+                hybrid_options.append(hybrid_colors)
     
-    return result
+    return (result, hybrid_options)
 
 
 class CardPosition(BaseModel):
@@ -240,7 +260,7 @@ def get_card_face_mana_cost(card: Card, side_index: int) -> Optional[str]:
     return face.get("mana_cost") if isinstance(face, dict) else getattr(face, "mana_cost", None)
 
 
-def get_mana_cost_for_card(card: Card) -> Dict[ManaColor, int]:
+def get_mana_cost_for_card(card: Card) -> Tuple[Dict[ManaColor, int], List[Set[ManaColor]]]:
     """Get the mana cost for a card, considering DFC sides."""
     if card.played_as_side is not None:
         mana_cost = get_card_face_mana_cost(card, card.played_as_side)

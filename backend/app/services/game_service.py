@@ -759,6 +759,11 @@ class GameService:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=str(e)
                 )
+            except InsufficientResourcesError as e:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=str(e)
+                )
             
             sync_engine_to_db(engine, self.game_state_repo.db)
             
@@ -810,7 +815,6 @@ class GameService:
         current_user: User
     ):
         from app.schemas.game_state import ValidPlayCard as SchemaValidPlayCard, ValidPlaysResponse
-        from app.engine.exceptions import TooManyLandsError, InvalidPhaseForLandError
         
         game = self._get_game_or_404(game_id)
         
