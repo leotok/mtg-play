@@ -6,6 +6,7 @@ from app.engine.exceptions import (
     InvalidPlayerError,
     InsufficientResourcesError,
 )
+from app.engine.land_utils import get_land_colors, is_hybrid_land
 
 __all__ = [
     "GameEngine",
@@ -14,4 +15,6 @@ __all__ = [
     "InvalidCardError",
     "InvalidPlayerError",
     "InsufficientResourcesError",
+    "get_land_colors",
+    "is_hybrid_land",
 ]

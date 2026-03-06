@@ -1,4 +1,4 @@
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, Set, TYPE_CHECKING
 from app.engine.models import (
     GameStateData,
     PlayerState,
@@ -25,6 +25,7 @@ from app.engine.exceptions import (
 )
 from app.engine.phases import PhaseManager, create_action_result
 from app.engine.actions import CardManager, LifeManager, ManaManager, CombatManager, LandTapper
+from app.engine.land_utils import get_land_colors as _get_land_colors
 
 if TYPE_CHECKING:
     from app.models.game_state import GameState as DBGameState
@@ -224,6 +225,28 @@ class GameEngine:
     def tap_card(self, card_id: int) -> ActionResult:
         card = self.card_manager.tap_card(card_id)
         
+        if not card.is_tapped and card.type_line and "land" in card.type_line.lower():
+            player = self.phase_manager.get_player_by_id(card.player_id)
+            
+            colors_produced = _get_land_colors(card.type_line, card.card_name, card.oracle_text)
+            
+            if len(colors_produced) > 1:
+                for color in colors_produced:
+                    if player.mana_pool.get(color, 0) > 0:
+                        player.mana_pool[color] -= 1
+            elif colors_produced:
+                color = next(iter(colors_produced))
+                if player.mana_pool.get(color, 0) > 0:
+                    player.mana_pool[color] -= 1
+            else:
+                for color in [ManaColor.WHITE, ManaColor.BLUE, ManaColor.BLACK, ManaColor.RED, ManaColor.GREEN]:
+                    if player.mana_pool.get(color, 0) > 0:
+                        player.mana_pool[color] -= 1
+                        break
+                else:
+                    if player.mana_pool.get(ManaColor.COLORLESS, 0) > 0:
+                        player.mana_pool[ManaColor.COLORLESS] -= 1
+        
         action = "untapped" if not card.is_tapped else "tapped"
         
         return create_action_result(
@@ -231,6 +254,24 @@ class GameEngine:
             affected_cards=[card_id],
             message=f"{card.card_name} {action}",
         )
+    
+    def get_card_colors(self, card_id: int) -> Set[ManaColor]:
+        """Get the colors a card can produce (for lands).
+        
+        Args:
+            card_id: The ID of the card to check.
+            
+        Returns:
+            Set of ManaColor values the land can produce.
+        """
+        card = self.card_manager.get_card(card_id)
+        if not card:
+            raise InvalidCardError(f"Card {card_id} not found")
+        
+        if not card.type_line or "land" not in card.type_line.lower():
+            return set()
+        
+        return _get_land_colors(card.type_line, card.card_name, card.oracle_text)
     
     def untap_all(self, player_id: int) -> ActionResult:
         untapped = self.card_manager.untap_all(player_id)

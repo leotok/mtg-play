@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, status, HTTPException
-from typing import List
+from typing import List, Optional
 
 from app.core.auth import get_current_user
 from app.models.user import User
@@ -22,6 +22,7 @@ from app.schemas.game_state import (
     ChooseCardSideResponse,
     CardSideOption,
     ValidPlaysResponse,
+    TapLandForManaRequest,
 )
 from app.services.game_service import get_game_service, GameService
 from app.socket import get_sio
@@ -383,6 +384,29 @@ async def tap_card(
 ):
     """Tap or untap a card"""
     return await game_service.tap_card(game_id, card_id, current_user)
+
+
+@router.post("/{game_id}/tap-land/{card_id}", response_model=GameStateResponse)
+async def tap_land_for_mana(
+    game_id: int,
+    card_id: int,
+    request: Optional[TapLandForManaRequest] = None,
+    current_user: User = Depends(get_current_user),
+    game_service: GameService = Depends(get_game_service)
+):
+    """Tap a land to add mana to the mana pool. For hybrid lands, provide color in request body."""
+    return await game_service.tap_land_for_mana(game_id, card_id, request.color if request else None, current_user)
+
+
+@router.get("/{game_id}/lands/{card_id}/colors")
+async def get_land_colors(
+    game_id: int,
+    card_id: int,
+    current_user: User = Depends(get_current_user),
+    game_service: GameService = Depends(get_game_service)
+):
+    """Get the colors a land can produce. Used for hybrid land color picker."""
+    return await game_service.get_land_colors(game_id, card_id, current_user)
 
 
 @router.post("/{game_id}/battlefield-position", response_model=GameStateResponse)

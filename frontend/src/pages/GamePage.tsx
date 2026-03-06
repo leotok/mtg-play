@@ -9,6 +9,7 @@ import { PlayerZone } from '../components/gamePage/PlayerZone';
 import { GameSideBar } from '../components/gamePage/GameSideBar';
 import { Toast } from '../components/common/Toast';
 import CardSideModal from '../components/gamePage/CardSideModal';
+import { HybridColorPicker } from '../components/gamePage/HybridColorPicker';
 import { CARD_SIZES } from '../config';
 
 
@@ -30,6 +31,8 @@ const GamePage: React.FC = () => {
     untapAll,
     playCard, 
     tapCard,
+    tapLandForMana,
+    getLandColors: getLandColorsFromApi,
     updateBattlefieldPosition,
     passPriority,
     moveCard,
@@ -61,6 +64,13 @@ const GamePage: React.FC = () => {
   const [selectionBox, setSelectionBox] = useState<{ startX: number; startY: number; currentX: number; currentY: number } | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
 
+  const [hybridPicker, setHybridPicker] = useState<{
+    isOpen: boolean;
+    cardId: number | null;
+    position: { x: number; y: number };
+    availableColors: string[];
+  }>({ isOpen: false, cardId: null, position: { x: 0, y: 0 }, availableColors: [] });
+
   const battlefieldRef = React.useRef<HTMLDivElement>(null);
   const handRef = React.useRef<HTMLDivElement>(null);
   const commanderRef = React.useRef<HTMLDivElement>(null);
@@ -85,6 +95,21 @@ const GamePage: React.FC = () => {
 
   const currentPlayer = gameState?.players.find(p => p.user_id === user?.id);
   const isCurrentUser = !!currentPlayer;
+
+  const isLand = (card: GameCard | GameCardInBattlefield): boolean => {
+    const typeLine = card.type_line?.toLowerCase() || '';
+    return typeLine.includes('land');
+  };
+
+  const getLandColors = async (card: GameCard | GameCardInBattlefield): Promise<string[]> => {
+    if (!gameId) return ['colorless'];
+    return await getLandColorsFromApi(parseInt(gameId), card.id);
+  };
+
+  const isHybridLand = async (card: GameCard | GameCardInBattlefield): Promise<boolean> => {
+    const colors = await getLandColors(card);
+    return colors.length > 1;
+  };
 
   useEffect(() => {
     if (!gameId || !user?.id) return;
@@ -116,9 +141,48 @@ const GamePage: React.FC = () => {
     await untapAll(parseInt(gameId));
   };
 
-  const handleTapCard = async (cardId: number) => {
+  const handleTapCard = async (cardId: number, e: React.MouseEvent) => {
     if (!gameId) return;
+    
+    const currentUserPlayer = gameState?.players.find(p => p.user_id === user?.id);
+    if (!currentUserPlayer) return;
+    
+    // Find the card in battlefield
+    const battlefieldCard = currentUserPlayer.battlefield.find(c => c.id === cardId);
+    
+    if (battlefieldCard && isLand(battlefieldCard) && !battlefieldCard.is_tapped) {
+      // It's a land - check if hybrid
+      if (await isHybridLand(battlefieldCard)) {
+        // Show hybrid color picker at tap position
+        const colors = await getLandColors(battlefieldCard);
+        const position = { x: e.clientX, y: e.clientY };
+        setHybridPicker({
+          isOpen: true,
+          cardId: cardId,
+          position,
+          availableColors: colors,
+        });
+        return;
+      } else {
+        // Single color land - tap for mana directly
+        await tapLandForMana(parseInt(gameId), cardId);
+        return;
+      }
+    }
+    
+    // Regular card tap
     await tapCard(parseInt(gameId), cardId);
+  };
+
+  const handleHybridColorSelect = async (color: string) => {
+    if (!gameId || hybridPicker.cardId === null) return;
+    
+    await tapLandForMana(parseInt(gameId), hybridPicker.cardId, color);
+    setHybridPicker({ isOpen: false, cardId: null, position: { x: 0, y: 0 }, availableColors: [] });
+  };
+
+  const handleHybridPickerClose = () => {
+    setHybridPicker({ isOpen: false, cardId: null, position: { x: 0, y: 0 }, availableColors: [] });
   };
 
   const handlePassPriority = async () => {
@@ -673,6 +737,15 @@ const GamePage: React.FC = () => {
           onClose={clearSideSelection}
         />
       )}
+
+      {/* Hybrid Color Picker for Lands */}
+      <HybridColorPicker
+        isOpen={hybridPicker.isOpen}
+        position={hybridPicker.position}
+        availableColors={hybridPicker.availableColors}
+        onSelect={handleHybridColorSelect}
+        onClose={handleHybridPickerClose}
+      />
     </div>
   );
 };

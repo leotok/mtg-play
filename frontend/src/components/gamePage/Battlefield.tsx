@@ -19,7 +19,7 @@ export const Battlefield: React.FC<{
         originalLogicalPosition?: { x: number; y: number };
         selectedCards?: Array<{ id: number; originalX: number; originalY: number; isTapped: boolean }>;
     } | null;
-    onTapCard?: (cardId: number) => void;
+    onTapCard?: (cardId: number, e: React.MouseEvent) => void;
     onMouseDownCard?: (card: GameCard | GameCardInBattlefield, e: React.MouseEvent) => void;
     onMouseDownEmptyBattlefield?: (e: React.MouseEvent) => void;
     onHoverCard?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null) => void;
@@ -60,7 +60,7 @@ export const Battlefield: React.FC<{
                             size="sm"
                             idx={cardZIndex}
                             isSelected={isCardSelected}
-                            onTap={() => onTapCard?.(card.id)}
+                            onTap={(e) => onTapCard?.(card.id, e)}
                             onMouseDown={isCurrentUser ? (e) => onMouseDownCard?.(card, e) : undefined}
                             onHover={onHoverCard}
                         />

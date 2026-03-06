@@ -78,6 +78,7 @@ class PlayerGameStateResponse(BaseModel):
     is_active: bool
     life_total: int
     poison_counters: int
+    mana_pool: Optional[Dict[str, int]] = {}
     library: List[GameCardResponse]
     hand: List[GameCardResponse]
     battlefield: List[GameCardInBattlefieldResponse]
@@ -142,6 +143,11 @@ class AdjustLifeRequest(BaseModel):
 class AddManaRequest(BaseModel):
     color: str
     amount: int = 1
+
+
+class TapLandForManaRequest(BaseModel):
+    """Request to tap a land and add mana to the pool."""
+    color: Optional[str] = None  # Required for hybrid lands, optional for single color lands
 
 
 class GameActionErrorResponse(BaseModel):

@@ -84,6 +84,7 @@ export interface PlayerGameState {
   graveyard: GameCard[];
   exile: GameCard[];
   commander: GameCard[];
+  mana_pool: Record<string, number>;
 }
 
 export interface GameState {

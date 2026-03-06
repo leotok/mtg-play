@@ -8,6 +8,8 @@ import { Graveyard } from "./Graveyard";
 import { HandCards } from "./HandCards";
 import { Library } from "./Library";
 import { LifeCounter } from "./LifeCounter";
+import { ManaPool } from "./ManaPool";
+import { HybridColorPicker } from "./HybridColorPicker";
 
 
 export const PlayerZone: React.FC<{
@@ -15,7 +17,7 @@ export const PlayerZone: React.FC<{
   isCurrentUser: boolean;
   isActive: boolean;
   playableCardIds?: Set<number>;
-  onTapCard?: (cardId: number) => void;
+  onTapCard?: (cardId: number, e: React.MouseEvent) => void;
   onHoverCard?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null) => void;
   onMouseDownCard?: (card: GameCardInBattlefield, e: React.MouseEvent) => void;
   onMouseDownHand?: (card: GameCard, e: React.MouseEvent) => void;
@@ -53,6 +55,8 @@ export const PlayerZone: React.FC<{
     >
       
       <LifeCounter player={player} />
+
+      <ManaPool player={player} isCurrentUser={isCurrentUser} />
 
       <Battlefield
         player={player}
@@ -123,6 +127,14 @@ export const PlayerZone: React.FC<{
       </div>
 
       <DraggingCard dragState={dragState} isCurrentUser={isCurrentUser} battlefieldRef={battlefieldRef} />
+
+      <HybridColorPicker
+        isOpen={false}
+        onSelect={() => {}}
+        onClose={() => {}}
+        position={{ x: 0, y: 0 }}
+        availableColors={[]}
+      />
   
     </div>
   );

@@ -28,6 +28,7 @@ from app.services.scryfall import get_scryfall_service
 from app.engine.game_engine import create_engine_from_db, sync_engine_to_db
 from app.engine.models import MoveCardInput, ManaColor
 from app.engine.exceptions import TooManyLandsError, InvalidPhaseForLandError
+from app.engine.land_utils import get_land_colors
 from app.socket import get_sio
 import logging
 import secrets
@@ -546,6 +547,14 @@ class GameService:
                 is_active=ps.is_active,
                 life_total=ps.life_total,
                 poison_counters=ps.poison_counters,
+                mana_pool={
+                    "white": ps.white_mana or 0,
+                    "blue": ps.blue_mana or 0,
+                    "black": ps.black_mana or 0,
+                    "red": ps.red_mana or 0,
+                    "green": ps.green_mana or 0,
+                    "colorless": ps.colorless_mana or 0,
+                },
                 library=[GameCardResponse(**self._card_to_dict(c, is_current_user)) for c in library] if is_current_user else [],
                 hand=[GameCardResponse(**self._card_to_dict(c, is_current_user)) for c in hand] if is_current_user else [GameCardResponse(**self._card_to_dict(c, False)) for c in hand],
                 battlefield=[GameCardInBattlefieldResponse(**self._card_to_battlefield_dict(c)) for c in battlefield],
@@ -1175,6 +1184,48 @@ class GameService:
             
             self.game_card_repo.toggle_tapped(card_id)
             
+            # If untapping a land, remove mana from pool
+            if was_tapped and card.type_line and "land" in card.type_line.lower():
+                type_lower = card.type_line.lower()
+                name_lower = card.card_name.lower() if card.card_name else ""
+                
+                # Determine which colors this land can produce
+                colors_produced = []
+                if "plains" in type_lower:
+                    colors_produced.append("white")
+                if "island" in type_lower:
+                    colors_produced.append("blue")
+                if "swamp" in type_lower:
+                    colors_produced.append("black")
+                if "mountain" in type_lower:
+                    colors_produced.append("red")
+                if "forest" in type_lower:
+                    colors_produced.append("green")
+                
+                # For dual/triome lands (more than one color), try to decrease all available
+                if len(colors_produced) > 1:
+                    # Try to decrease each color that's available in the pool
+                    for color in colors_produced:
+                        mana_field = f"{color}_mana"
+                        if hasattr(player_state, mana_field) and getattr(player_state, mana_field) > 0:
+                            setattr(player_state, mana_field, getattr(player_state, mana_field) - 1)
+                elif colors_produced:
+                    # Single color land - decrease that color
+                    color = colors_produced[0]
+                    mana_field = f"{color}_mana"
+                    if hasattr(player_state, mana_field) and getattr(player_state, mana_field) > 0:
+                        setattr(player_state, mana_field, getattr(player_state, mana_field) - 1)
+                else:
+                    # Non-basic land with no basic types - try colored mana, then colorless
+                    for color in ["white", "blue", "black", "red", "green"]:
+                        mana_field = f"{color}_mana"
+                        if hasattr(player_state, mana_field) and getattr(player_state, mana_field) > 0:
+                            setattr(player_state, mana_field, getattr(player_state, mana_field) - 1)
+                            break
+                    else:
+                        if player_state.colorless_mana > 0:
+                            player_state.colorless_mana -= 1
+            
             if self.game_log_repo:
                 tap_action = "untapped" if was_tapped else "tapped"
                 self.game_log_repo.create_log(
@@ -1182,6 +1233,171 @@ class GameService:
                     player_id=current_user.id,
                     action_type="tap",
                     message=f"{current_user.username} {tap_action} {card.card_name}",
+                    card_id=card.id,
+                    card_name=card.card_name
+                )
+        
+        return await self.get_game_state(game_id, current_user)
+    
+    async def get_land_colors(
+        self,
+        game_id: int,
+        card_id: int,
+        current_user: User
+    ) -> List[str]:
+        """Get the colors a land can produce.
+        
+        Returns a list of color strings (e.g., ["black", "red"]) for hybrid lands.
+        """
+        game = self._get_game_or_404(game_id)
+        
+        if game.status != GameStatus.IN_PROGRESS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Game is not in progress"
+            )
+        
+        game_state = self.game_state_repo.get_by_game_room_id(game_id)
+        if not game_state:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Game state not found"
+            )
+        
+        player_state = self.player_game_state_repo.get_by_game_state_and_user(
+            game_state.id, current_user.id
+        )
+        if not player_state:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not in this game"
+            )
+        
+        card = self.game_card_repo.get_card_by_id(card_id)
+        if not card:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Card not found"
+            )
+        
+        if card.player_game_state_id != player_state.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This card is not yours"
+            )
+        
+        if not card.type_line or "land" not in card.type_line.lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Card is not a land"
+            )
+        
+        colors = get_land_colors(card.type_line, card.card_name, card.oracle_text)
+        return [color.value for color in colors]
+    
+    async def tap_land_for_mana(
+        self,
+        game_id: int,
+        card_id: int,
+        color: Optional[str],
+        current_user: User
+    ) -> GameStateResponse:
+        game = self._get_game_or_404(game_id)
+        
+        if game.status != GameStatus.IN_PROGRESS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Game is not in progress"
+            )
+        
+        game_state = self.game_state_repo.get_by_game_room_id(game_id)
+        if not game_state:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Game state not found"
+            )
+        
+        player_state = self.player_game_state_repo.get_by_game_state_and_user(
+            game_state.id, current_user.id
+        )
+        if not player_state:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not in this game"
+            )
+        
+        card = self.game_card_repo.get_card_by_id(card_id)
+        if not card:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Card not found"
+            )
+        
+        if card.player_game_state_id != player_state.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This card is not yours"
+            )
+        
+        if not card.type_line or "land" not in card.type_line.lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Card is not a land"
+            )
+        
+        if card.is_tapped:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Land is already tapped"
+            )
+        
+        if color:
+            try:
+                mana_color = ManaColor(color)
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid mana color: {color}"
+                )
+        else:
+            land_colors = get_land_colors(card.type_line, card.card_name, card.oracle_text)
+            mana_color = next(iter(land_colors))
+        
+        if self._use_engine(game):
+            player_states = self.player_game_state_repo.get_by_game_state(game_state.id)
+            cards_by_player = self._get_cards_by_player(player_states)
+            usernames = self._get_usernames(player_states)
+            
+            engine = create_engine_from_db(game_state, player_states, cards_by_player, usernames)
+            
+            engine.add_mana(player_state.user_id, mana_color, 1)
+            engine.tap_card(card_id)
+            
+            sync_engine_to_db(engine, self.game_state_repo.db)
+            
+            if self.game_log_repo:
+                self.game_log_repo.create_log(
+                    game_id=game_state.id,
+                    player_id=current_user.id,
+                    action_type="tap_land",
+                    message=f"{current_user.username} tapped {card.card_name} for {mana_color.value} mana",
+                    card_id=card.id,
+                    card_name=card.card_name
+                )
+        else:
+            mana_field = f"{mana_color.value}_mana"
+            if hasattr(player_state, mana_field):
+                setattr(player_state, mana_field, getattr(player_state, mana_field) + 1)
+            
+            self.game_card_repo.toggle_tapped(card_id)
+            self.player_game_state_repo.db.commit()
+            
+            if self.game_log_repo:
+                self.game_log_repo.create_log(
+                    game_id=game_state.id,
+                    player_id=current_user.id,
+                    action_type="tap_land",
+                    message=f"{current_user.username} tapped {card.card_name} for {mana_color.value} mana",
                     card_id=card.id,
                     card_name=card.card_name
                 )
@@ -1428,6 +1644,14 @@ class GameService:
             for card in battlefield_cards:
                 if card.is_tapped:
                     card.is_tapped = False
+            
+            # Clear mana pool when untapping all
+            player_state.white_mana = 0
+            player_state.blue_mana = 0
+            player_state.black_mana = 0
+            player_state.red_mana = 0
+            player_state.green_mana = 0
+            player_state.colorless_mana = 0
             
             self.game_card_repo.db.commit()
             

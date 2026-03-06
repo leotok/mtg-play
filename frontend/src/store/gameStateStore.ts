@@ -22,6 +22,8 @@ interface GameStateStore {
   untapAll: (gameId: number) => Promise<void>;
   playCard: (gameId: number, cardId: number, battlefieldX?: number, battlefieldY?: number, sideIndex?: number) => Promise<void>;
   tapCard: (gameId: number, cardId: number) => Promise<void>;
+  tapLandForMana: (gameId: number, cardId: number, color?: string) => Promise<void>;
+  getLandColors: (gameId: number, cardId: number) => Promise<string[]>;
   updateBattlefieldPosition: (gameId: number, cardId: number, x: number, y: number) => Promise<void>;
   moveCard: (gameId: number, cardId: number, targetZone: string, position: number) => Promise<void>;
   moveCards: (gameId: number, cards: { card_id: number; target_zone: string; position: number }[]) => Promise<void>;
@@ -147,6 +149,31 @@ export const useGameStateStore = create<GameStateStore>((set) => ({
         error: err.response?.data?.detail || 'Failed to tap card', 
         isLoading: false 
       });
+    }
+  },
+
+  tapLandForMana: async (gameId: number, cardId: number, color?: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await apiClient.post<GameState>(`/games/${gameId}/tap-land/${cardId}`, {
+        color: color ?? null,
+      });
+      set({ gameState: response, isLoading: false });
+    } catch (err: any) {
+      set({ 
+        error: err.response?.data?.detail || 'Failed to tap land for mana', 
+        isLoading: false 
+      });
+    }
+  },
+
+  getLandColors: async (gameId: number, cardId: number): Promise<string[]> => {
+    try {
+      const response = await apiClient.get<string[]>(`/games/${gameId}/lands/${cardId}/colors`);
+      return response;
+    } catch (err: any) {
+      console.error('Failed to get land colors:', err);
+      return ['colorless'];
     }
   },
 

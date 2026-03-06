@@ -5,7 +5,7 @@ import { CARD_SIZES, type CardSizeKey } from '../../config';
 
 export const Card: React.FC<{
   card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string; is_tapped?: boolean; battlefield_x?: number; battlefield_y?: number; is_attacking?: boolean; is_blocking?: boolean; is_face_up?: boolean };
-  onTap?: () => void;
+  onTap?: (e: React.MouseEvent) => void;
   onMouseDown?: (e: React.MouseEvent) => void;
   onHover?: (card: GameCard | { id: number; card_name: string; image_uris?: { normal?: string }; card_faces?: Array<{ image_uris?: { normal?: string } }>; mana_cost?: string; type_line?: string } | null) => void;
   size?: CardSizeKey;
@@ -73,11 +73,11 @@ export const Card: React.FC<{
     // Position tracking removed - no longer needed
   };
 
-  const handleDoubleClick = () => {
-    if (onTap) {
-      onTap();
-    }
-  };
+   const handleDoubleClick = (e: React.MouseEvent) => {
+     if (onTap) {
+       onTap(e);
+     }
+   };
 
   const handleClick = () => {
     // TODO: Implement card click behavior
