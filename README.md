@@ -154,24 +154,34 @@ uv run alembic downgrade -1
 - ✅ Game board UI with drag-and-drop
 - ✅ Card multi-selection drag-and-drop
 - ✅ Game action logs
+- Stack/rearrange cards in battlefield
+- Rearrange cards in hand
+- Add counters to permanents
+- Tokens creation
+- Library management (shuffle, draw, mill, search, seek, reveal)
 - Use socket.io for real-time game state synchronization during gameplay
 
 ### Phase 2: Game Complexity
-- Mana system
-- Stack system
-- Priority and turn/phases order system
-- Targeting
-- Move validation
+- ✅ Mana system
+- ✅ Move validation
+- ✅ Priority and turn/phases order system
 - Combat system
+- Stack system
+- Targeting
 - Complex abilities (keywords, activated/triggered)
 - Commander damage rules
-- AI opponent
 
-### Phase 3: Polish & Social
+### Phase 3: AI & Advanced Features
+- AI opponent
+- Games simulation for testing/balancing
+
+### Phase 4: Polish & Social
 - User profiles and stats
 - Game replay
 - Spectator mode
 - Game chat and emotes
+- Leaderboards
+- Change card print (foil, alternate art, etc.)
 
 See `commander-roadmap.md` for detailed milestones.
 

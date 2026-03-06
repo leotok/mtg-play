@@ -732,6 +732,14 @@ class GameService:
             
             from_zone = card.zone
             
+            if target_zone == CardZone.BATTLEFIELD:
+                existing_cards = self.game_card_repo.get_player_cards_in_zone(player_state.id, CardZone.BATTLEFIELD)
+                if existing_cards:
+                    max_pos = max(c.position for c in existing_cards)
+                else:
+                    max_pos = 0
+                position = max_pos + 1
+            
             try:
                 engine.play_card(
                     card_id,
