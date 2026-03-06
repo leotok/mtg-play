@@ -89,6 +89,7 @@ class CardManager:
                 break
             
             top_card = min(player.library, key=lambda c: c.position)
+            top_card.zone = CardZone.HAND
             player.library.remove(top_card)
             player.hand.append(top_card)
             drawn.append(top_card)

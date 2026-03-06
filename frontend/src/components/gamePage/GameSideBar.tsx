@@ -30,7 +30,7 @@ const getDynamicButton = (
         case "upkeep":
             return { label: "Upkeep", color: "bg-yellow-600 hover:bg-yellow-500", action: handlePassPriority };
         case "draw":
-            return { label: "Draw", color: "bg-blue-600 hover:bg-blue-500", action: () => {handleDrawCard(); handlePassPriority();} };
+            return { label: "Draw", color: "bg-blue-600 hover:bg-blue-500", action: handlePassPriority };
         case "cleanup":
             return { label: "End Turn", color: "bg-red-600 hover:bg-red-500", action: handlePassPriority };
         default:

@@ -256,7 +256,10 @@ class GameEngine:
         )
     
     def pass_priority(self) -> ActionResult:
-        next_phase, turn_changed, new_active_player = self.phase_manager.advance_phase()
+        current_phase, next_phase, turn_changed, new_active_player = self.phase_manager.advance_phase()
+        
+        if current_phase == TurnPhase.DRAW:
+            self.draw_cards(player_id=new_active_player, count=1)
         
         for player in self.game_state.players:
             player.mana_pool.clear()

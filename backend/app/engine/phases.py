@@ -1,3 +1,4 @@
+from typing import Optional
 from app.engine.models import TurnPhase, GameStateData, PlayerState, ActionResult
 from app.engine.exceptions import InvalidPhaseError, InvalidPlayerError
 
@@ -72,18 +73,18 @@ class PhaseManager:
     def can_block(self) -> bool:
         return self.game_state.current_phase == TurnPhase.COMBAT_BLOCK
     
-    def advance_phase(self) -> tuple[TurnPhase, bool, int]:
+    def advance_phase(self) -> tuple[TurnPhase, TurnPhase, bool, int]:
         current_phase = self.game_state.current_phase
         current_index = PHASE_ORDER.index(current_phase)
         
         if current_index < len(PHASE_ORDER) - 1:
             next_phase = PHASE_ORDER[current_index + 1]
             self.game_state.current_phase = next_phase
-            return next_phase, False, self.game_state.active_player_id
+            return current_phase, next_phase, False, self.game_state.active_player_id
         else:
             return self._start_next_turn()
     
-    def _start_next_turn(self) -> tuple[TurnPhase, bool, int]:
+    def _start_next_turn(self) -> tuple[TurnPhase, TurnPhase, bool, int]:
         player_states = sorted(self.game_state.players, key=lambda p: p.player_order)
         
         current_player = self.get_current_player()
@@ -100,7 +101,7 @@ class PhaseManager:
         self.game_state.current_turn += 1
         self.game_state.current_phase = TurnPhase.UNTAP
         
-        return TurnPhase.UNTAP, True, next_player.user_id
+        return TurnPhase.CLEANUP, TurnPhase.UNTAP, True, next_player.user_id
     
     def set_phase(self, phase: TurnPhase) -> None:
         if phase not in PHASE_ORDER:

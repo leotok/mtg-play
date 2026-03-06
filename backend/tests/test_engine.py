@@ -313,6 +313,25 @@ class TestPassPriority:
         assert game_state.current_phase == TurnPhase.UNTAP
         assert game_state.current_turn == 2
         assert game_state.active_player_id == 2
+    
+    def test_draw_phase_auto_draws_card(self):
+        game_state = create_test_game_state()
+        game_state.current_phase = TurnPhase.DRAW
+        player1 = game_state.players[0]
+        initial_hand_size = len(player1.hand)
+        initial_library_size = len(player1.library)
+        
+        engine = GameEngine(game_state)
+        
+        result = engine.pass_priority()
+        
+        assert result.success
+        assert game_state.current_phase == TurnPhase.MAIN1
+        assert len(player1.hand) == initial_hand_size + 1
+        assert len(player1.library) == initial_library_size - 1
+        
+        drawn_card = player1.hand[-1]
+        assert drawn_card.zone == CardZone.HAND
 
 
 class TestPhaseManager:
