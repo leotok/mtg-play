@@ -60,11 +60,16 @@ class PhaseManager:
     def is_main_phase(self) -> bool:
         return self.game_state.current_phase in [TurnPhase.MAIN1, TurnPhase.MAIN2]
     
-    def can_cast_spells(self) -> bool:
+    def can_cast_spells(self, player_id: int) -> bool:
+        """Only active player can cast spells, and only during main phases or upkeep."""
+        if player_id != self.game_state.active_player_id:
+            return False
         return self.is_main_phase() or self.game_state.current_phase == TurnPhase.UPKEEP
     
-    def can_play_land(self) -> bool:
-        """Lands can only be played during Main1 or Main2."""
+    def can_play_land(self, player_id: int) -> bool:
+        """Only active player can play lands, and only during main phases."""
+        if player_id != self.game_state.active_player_id:
+            return False
         return self.is_main_phase()
     
     def can_attack(self) -> bool:

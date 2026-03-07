@@ -815,6 +815,26 @@ class GameService:
                 detail="This card is not yours"
             )
         
+        is_land = card.type_line and "land" in card.type_line.lower()
+        
+        if is_land:
+            if game_state.current_phase not in ['main1', 'main2']:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Lands can only be played during main phase"
+                )
+        else:
+            if game_state.active_player_id != current_user.id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Can only cast spells during your turn"
+                )
+            if game_state.current_phase not in ['main1', 'main2', 'upkeep']:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Can only cast spells during main phase or upkeep"
+                )
+        
         if self._use_engine(game):
             player_states = self.player_game_state_repo.get_by_game_state(game_state.id)
             cards_by_player = self._get_cards_by_player(player_states)

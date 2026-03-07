@@ -55,6 +55,13 @@ def get_land_colors(
                 if color_char.lower() in COLOR_MAP:
                     colors.add(COLOR_MAP[color_char.lower()])
     
+    if not colors and oracle_text:
+        single_color_pattern = r'add+d?\s*\{([WUBRG])\}'
+        matches = re.findall(single_color_pattern, oracle_lower, re.IGNORECASE)
+        for match in matches:
+            if match.lower() in COLOR_MAP:
+                colors.add(COLOR_MAP[match.lower()])
+    
     if name_lower in TRIGAME_NAMES or "triome" in name_lower:
         colors.add(ManaColor.COLORLESS)
     

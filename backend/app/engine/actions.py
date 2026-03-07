@@ -16,6 +16,7 @@ from app.engine.exceptions import (
     InvalidPhaseError,
 )
 from app.engine.phases import PhaseManager
+from app.engine.land_utils import get_land_colors as _get_land_colors_util
 
 
 class CardManager:
@@ -472,32 +473,9 @@ class LandTapper:
         return 2
     
     def _get_land_colors(self, card: Card) -> set[ManaColor]:
-        """Get the colors a land can produce based on its types."""
-        type_line = (card.type_line or "").lower()
-        name = (card.card_name or "").lower()
-        
-        colors = set()
-        
-        for land_type, color in self.LAND_TYPES.items():
-            if land_type in type_line:
-                colors.add(color)
-        
-        if any(dual in name for dual in self.DUAL_LANDS_NOT_PAIN):
-            colors.add(ManaColor.COLORLESS)
-        
-        if "triome" in name:
-            colors.update([ManaColor.GREEN, ManaColor.BLUE, ManaColor.RED])
-        
-        if any(shock in name for shock in self.SHOCK_LANDS):
-            colors.add(ManaColor.COLORLESS)
-        
-        if any(pain in name for pain in self.PAIN_LANDS):
-            colors.add(ManaColor.COLORLESS)
-        
-        if not colors:
-            colors.add(ManaColor.COLORLESS)
-        
-        return colors
+        """Get the colors a land can produce based on its types and oracle text."""
+        oracle_text = getattr(card, 'oracle_text', None) or None
+        return _get_land_colors_util(card.type_line, card.card_name, oracle_text)
     
     def tap_lands_for_mana(self, needed: dict) -> dict:
         """Tap lands to produce the needed mana colors.

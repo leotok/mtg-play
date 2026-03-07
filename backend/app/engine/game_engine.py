@@ -21,6 +21,7 @@ from app.engine.exceptions import (
     EmptyLibraryError,
     TooManyLandsError,
     InvalidPhaseForLandError,
+    InvalidPhaseError,
     InsufficientResourcesError,
 )
 from app.engine.phases import PhaseManager, create_action_result
@@ -78,11 +79,14 @@ class GameEngine:
         is_land = card.type_line and "land" in card.type_line.lower()
         
         if is_land:
-            if not self.phase_manager.can_play_land():
+            if not self.phase_manager.can_play_land(card.player_id):
                 raise InvalidPhaseForLandError("Lands can only be played during main phase")
             if player.lands_played_this_turn >= 1:
                 raise TooManyLandsError("You may only play 1 land per turn")
             player.lands_played_this_turn += 1
+        else:
+            if not self.phase_manager.can_cast_spells(card.player_id):
+                raise InvalidPhaseError("Can only cast spells during your main phase")
         
         if side_index is not None:
             card.played_as_side = side_index
@@ -341,8 +345,8 @@ class GameEngine:
         
         player = self.phase_manager.get_player_by_id(player_id)
         current_phase = self.game_state.current_phase
-        can_cast = self.phase_manager.can_cast_spells()
-        can_play_land = self.phase_manager.can_play_land() and player.lands_played_this_turn < 1
+        can_cast = self.phase_manager.can_cast_spells(player_id)
+        can_play_land = self.phase_manager.can_play_land(player_id) and player.lands_played_this_turn < 1
         
         available_mana = dict(player.mana_pool)
         
