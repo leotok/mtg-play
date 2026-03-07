@@ -221,18 +221,55 @@ class TestLandColorDetection:
         assert ManaColor.BLACK in colors
         assert ManaColor.RED in colors
     
-    def test_triome_produces_colorless(self):
-        """Triome should produce COLORLESS in addition to colors."""
+    def test_triome_produces_all_three_colors_from_oracle_text(self):
+        """Triome should produce all 3 colors from oracle_text, NOT colorless (unless oracle_text says so)."""
+        colors = get_land_colors(
+            "Land",
+            "Ketria Triome",
+            "{T}: Add {W}, {U}, or {R}."
+        )
+        # Oracle text has W, U, R - should return all three colors
+        assert ManaColor.WHITE in colors
+        assert ManaColor.BLUE in colors
+        assert ManaColor.RED in colors
+        # Oracle text does NOT include {C}, so colorless should NOT be in the result
+        assert ManaColor.COLORLESS not in colors
+    
+    def test_triome_does_not_produce_colorless_when_oracle_text_has_no_c(self):
+        """Triome with oracle_text that only has colored mana should NOT produce colorless."""
         colors = get_land_colors(
             "Land",
             "Rau Triome",
             "({T}: Add {W}, {U}, or {R}.)"
         )
-        # Note: Currently only parses single colors, not all 3
+        # Oracle text has W, U, R - should return those colors
+        assert ManaColor.WHITE in colors
+        assert ManaColor.BLUE in colors
+        assert ManaColor.RED in colors
+        # Oracle text does NOT include {C}, so colorless should NOT be in the result
+        assert ManaColor.COLORLESS not in colors
+    
+    def test_wastes_produces_colorless(self):
+        """Wastes should produce colorless since oracle_text says {C}."""
+        colors = get_land_colors(
+            "Basic Land — Wastes",
+            "Wastes",
+            "{T}: Add {C}."
+        )
         assert ManaColor.COLORLESS in colors
     
+    def test_oracle_text_with_multiple_colors(self):
+        """Land with oracle_text specifying multiple colors should return all of them."""
+        colors = get_land_colors(
+            "Land",
+            "Blood Crypt",
+            "({T}: Add {B} or {R}.)"
+        )
+        assert ManaColor.BLACK in colors
+        assert ManaColor.RED in colors
+    
     def test_generic_land_produces_colorless(self):
-        """Land without basic type should produce COLORLESS."""
+        """Land without basic type and no oracle_text should produce COLORLESS."""
         colors = get_land_colors("Land", "Some Land", None)
         assert ManaColor.COLORLESS in colors
     

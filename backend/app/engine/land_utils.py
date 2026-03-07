@@ -60,7 +60,7 @@ def get_land_colors(
     if "forest" in name_lower:
         colors.add(ManaColor.GREEN)
     
-    if not colors and oracle_text:
+    if oracle_text:
         hybrid_pattern = r'\{([WUBRG])\}.*?or.*?\{([WUBRG])\}'
         matches = re.findall(hybrid_pattern, oracle_lower, re.IGNORECASE)
         for match in matches:
@@ -68,15 +68,14 @@ def get_land_colors(
                 if color_char.lower() in COLOR_MAP:
                     colors.add(COLOR_MAP[color_char.lower()])
     
-    if not colors and oracle_text:
-        single_color_pattern = r'add+d?\s*\{([WUBRG])\}'
-        matches = re.findall(single_color_pattern, oracle_lower, re.IGNORECASE)
+    if oracle_text:
+        mana_symbol_pattern = r'\{([WUBRGC])\}'
+        matches = re.findall(mana_symbol_pattern, oracle_lower, re.IGNORECASE)
         for match in matches:
             if match.lower() in COLOR_MAP:
                 colors.add(COLOR_MAP[match.lower()])
-    
-    if name_lower in TRIGAME_NAMES or "triome" in name_lower:
-        colors.add(ManaColor.COLORLESS)
+            elif match.lower() == 'c':
+                colors.add(ManaColor.COLORLESS)
     
     if not colors:
         colors.add(ManaColor.COLORLESS)
