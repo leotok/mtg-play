@@ -504,34 +504,39 @@ class GameEngine:
                 hybrid_from_pool += min(pool.get(color, 0), hybrid_needed)
             
             hybrid_still_needed = max(0, hybrid_needed - hybrid_from_pool)
-            total_from_lands = hybrid_still_needed + generic_needed
             
-            if total_from_lands == 0:
-                return True
+            # For hybrid: need colored lands for each hybrid still needed
+            # For generic: can use any remaining land
+            # Total lands needed = hybrid_still_needed + generic_needed
+            total_lands_needed = hybrid_still_needed + generic_needed
             
-            if life_payment > 0 and player.life_total >= life_payment:
+            if total_lands_needed == 0:
                 return True
             
             # Check if pool can cover everything
             total_pool = sum(pool.values())
-            if total_pool >= total_from_lands:
+            if total_pool >= total_lands_needed:
                 return True
             
             # Need to use lands
-            can_pay_from_lands = False
-            if hybrid_still_needed > 0:
-                if land_tapper.can_produce_mana({c: 1 for c in hybrid_choice}):
-                    if generic_needed == 0:
-                        can_pay_from_lands = True
-                    elif total_pool >= generic_needed:
-                        can_pay_from_lands = True
-                    elif land_tapper.can_produce_generic(generic_needed):
-                        can_pay_from_lands = True
-            elif generic_needed > 0:
-                if land_tapper.can_produce_generic(generic_needed):
-                    can_pay_from_lands = True
+            untapped_count = len(land_tapper.get_untapped_lands())
             
-            if can_pay_from_lands:
+            # Check if we can produce enough mana from lands
+            if untapped_count >= total_lands_needed:
+                # But we also need to verify we can produce the SPECIFIC colors for hybrid
+                if hybrid_still_needed > 0:
+                    # Check if we can produce hybrid colors from lands
+                    if land_tapper.can_produce_mana({c: 1 for c in hybrid_choice}, require_all=False):
+                        # After using lands for hybrid, can we still get generic?
+                        remaining_lands = untapped_count - hybrid_still_needed
+                        if remaining_lands >= generic_needed:
+                            return True
+                else:
+                    # Only generic needed
+                    if land_tapper.can_produce_generic(generic_needed):
+                        return True
+            
+            if life_payment > 0 and player.life_total >= life_payment:
                 return True
         
         return False

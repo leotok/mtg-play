@@ -167,6 +167,8 @@ class TestParseManaCost:
         """Hybrid with number should include generic."""
         result, hybrid = parse_mana_cost("{2}{B/R}")
         assert result.get("generic", 0) == 2
+        assert "black" in hybrid[0]
+        assert "red" in hybrid[0]
         assert len(hybrid) == 1
     
     def test_hybrid_only(self):

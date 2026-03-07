@@ -617,9 +617,9 @@ class TestHybridManaAffordability:
             library=[],
             hand=[self.create_card_with_mana(10, "HybridCreature", CardZone.HAND, 1, "{B/R}{B/R}{1}")],
             battlefield=[
-                self.create_land_card(20, "Mountain", 1, "Land"),
-                self.create_land_card(21, "Swamp", 1, "Land"),
-                self.create_land_card(22, "Forest", 1, "Land"),
+                self.create_land_card(20, "Mountain", 1, "Basic Land"),
+                self.create_land_card(21, "Swamp", 1, "Basic Land"),
+                self.create_land_card(22, "Forest", 1, "Basic Land"),
             ],
             graveyard=[],
             exile=[],

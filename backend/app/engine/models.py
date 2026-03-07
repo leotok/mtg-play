@@ -92,15 +92,11 @@ def parse_mana_cost(mana_cost: Optional[str]) -> Tuple[Dict[ManaColor, int], Lis
             for part in parts:
                 if part in MANA_SYMBOL_MAP:
                     color = MANA_SYMBOL_MAP[part]
-                    if color != ManaColor.COLORLESS:
-                        hybrid_colors.add(color)
+                    hybrid_colors.add(color)
                 elif part.isdigit():
-                    result[GENERIC_KEY] = result.get(GENERIC_KEY, 0) + int(part)
+                    hybrid_colors.add(int(part))
             
-            if len(hybrid_colors) >= 2:
-                hybrid_options.append(hybrid_colors)
-            elif len(hybrid_colors) == 1:
-                hybrid_options.append(hybrid_colors)
+            hybrid_options.append(hybrid_colors)
     
     return (result, hybrid_options)
 

@@ -544,13 +544,14 @@ class LandTapper:
         
         return produced
 
-    def can_produce_mana(self, needed: dict) -> bool:
+    def can_produce_mana(self, needed: dict, require_all: bool = True) -> bool:
         """Check if mana can be produced without actually tapping lands.
         
         This is a simulation-only check that doesn't modify any state.
         
         Args:
             needed: Dictionary of colors and amounts needed
+            require_all: If True, need ALL colors. If False, only need ANY of the colors (for hybrid).
             
         Returns:
             True if mana can be produced, False otherwise
@@ -586,6 +587,11 @@ class LandTapper:
                     break
         
         if remaining and sum(remaining.values()) > 0:
+            if not require_all:
+                # For hybrid mana - if we need ANY of the colors and some are satisfied
+                satisfied = sum(1 for c in colored_mana if c not in remaining)
+                if satisfied > 0:
+                    return True
             return False
         
         if colorless_mana > 0:

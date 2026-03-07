@@ -36,6 +36,7 @@ def get_land_colors(
     name_lower = name.lower() if name else ""
     oracle_lower = oracle_text.lower() if oracle_text else ""
     
+    # Check type_line first
     if "plains" in type_lower:
         colors.add(ManaColor.WHITE)
     if "island" in type_lower:
@@ -45,6 +46,18 @@ def get_land_colors(
     if "mountain" in type_lower:
         colors.add(ManaColor.RED)
     if "forest" in type_lower:
+        colors.add(ManaColor.GREEN)
+    
+    # Also check name for basic lands (e.g., "Mountain" with type "Basic Land")
+    if "plains" in name_lower:
+        colors.add(ManaColor.WHITE)
+    if "island" in name_lower:
+        colors.add(ManaColor.BLUE)
+    if "swamp" in name_lower:
+        colors.add(ManaColor.BLACK)
+    if "mountain" in name_lower:
+        colors.add(ManaColor.RED)
+    if "forest" in name_lower:
         colors.add(ManaColor.GREEN)
     
     if not colors and oracle_text:
