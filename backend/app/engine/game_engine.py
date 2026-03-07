@@ -96,61 +96,9 @@ class GameEngine:
         if needed_mana or hybrid_options:
             land_tapper = LandTapper(player)
             
-            if not self._can_afford_mana(needed_mana, hybrid_options, player, land_tapper):
+            # Use single source of truth - _can_afford_mana with dry_run=False to actually pay
+            if not self._can_afford_mana(needed_mana, hybrid_options, player, land_tapper, dry_run=False):
                 raise InsufficientResourcesError("Not enough mana to play this card")
-            
-            pool = player.mana_pool
-            GENERIC_KEY = "generic"
-            
-            # Handle generic mana - can be paid with any color from pool or lands
-            generic_needed = needed_mana.pop(GENERIC_KEY, 0)
-            
-            # Pay colored from pool (skip generic and colorless)
-            for color, amount in list(needed_mana.items()):
-                if color == ManaColor.COLORLESS:
-                    continue
-                pool_amount = pool.get(color, 0)
-                if pool_amount >= amount:
-                    pool[color] = pool_amount - amount
-                    needed_mana[color] = 0
-                else:
-                    needed_mana[color] = amount - pool_amount
-                    pool[color] = 0
-            
-            # For remaining colored mana, tap lands
-            remaining_colored = {k: v for k, v in needed_mana.items() if v > 0 and k != ManaColor.COLORLESS}
-            
-            tapped_lands = []
-            for hybrid_choice in hybrid_options:
-                colors_in_hybrid = list(hybrid_choice)
-                paid_from_pool = False
-                
-                for color in colors_in_hybrid:
-                    if pool.get(color, 0) > 0:
-                        pool[color] = pool.get(color, 0) - 1
-                        paid_from_pool = True
-                        break
-                
-                if not paid_from_pool:
-                    try:
-                        result = land_tapper.tap_lands_for_mana({colors_in_hybrid[0]: 1})
-                        tapped_lands.extend([k for k, v in result.items() if v > 0])
-                    except:
-                        pass
-            
-            # Tap remaining colored lands
-            if remaining_colored:
-                try:
-                    land_tapper.tap_lands_for_mana(remaining_colored)
-                except:
-                    pass
-            
-            # Tap lands for generic - can use any land
-            if generic_needed > 0:
-                try:
-                    land_tapper.tap_lands_for_generic(generic_needed)
-                except:
-                    pass
         
         from_zone = CardZone(card.zone)
         
@@ -421,15 +369,19 @@ class GameEngine:
             'plays': playable_cards,
         }
     
-    def _can_afford_mana(self, needed_mana: dict, hybrid_options: list, player: PlayerState, land_tapper: LandTapper) -> bool:
+    def _can_afford_mana(self, needed_mana: dict, hybrid_options: list, player: PlayerState, land_tapper: LandTapper, dry_run: bool = True) -> bool:
         """Check if player can afford the mana cost.
+        
+        Order: pool first → colored → colorless → hybrid → generic
         
         Args:
             needed_mana: Dictionary of ManaColor -> amount needed
             hybrid_options: List of sets representing hybrid/payment alternatives
             player: The player whose mana to check
             land_tapper: LandTapper instance for checking land production
-            
+            dry_run: If True, only validate without modifying state
+                     If False, actually deduct from pool and tap lands
+                    
         Returns:
             True if can afford, False otherwise
         """
@@ -439,105 +391,90 @@ class GameEngine:
         pool = player.mana_pool
         GENERIC_KEY = "generic"
         
-        if not hybrid_options:
-            remaining = dict(needed_mana)
-            
-            # Handle generic mana first
-            generic_needed = remaining.pop(GENERIC_KEY, 0)
-            
-            # Pay colored from pool
-            for color, amount in list(remaining.items()):
-                pool_amount = pool.get(color, 0)
-                if pool_amount >= amount:
-                    remaining[color] = 0
-                else:
-                    remaining[color] = amount - pool_amount
-            
-            remaining_colored = sum(v for v in remaining.values() if v > 0)
-            
-            # Check if we can afford
-            total_pool = sum(pool.values())
-            
-            if generic_needed > 0:
-                # Check if pool has the SPECIFIC colored mana needed
-                can_pay_colored_from_pool = True
-                for color, amount in remaining.items():
-                    if amount > 0:
-                        if pool.get(color, 0) < amount:
-                            can_pay_colored_from_pool = False
-                            break
-                
-                if can_pay_colored_from_pool:
-                    # Pool has all colored needed, check generic
-                    pool_after_colored = total_pool - remaining_colored
-                    if pool_after_colored >= generic_needed:
-                        return True
-                    # Can use lands for remaining generic
-                    if land_tapper.can_produce_generic(generic_needed - pool_after_colored):
-                        return True
-                else:
-                    # Pool doesn't have all specific colors - need to use lands for colored
-                    if remaining_colored > 0:
-                        if land_tapper.can_produce_mana(remaining):
-                            # Check generic
-                            if total_pool >= generic_needed:
-                                return True
-                            if land_tapper.can_produce_generic(generic_needed):
-                                return True
-            elif remaining_colored > 0:
-                return land_tapper.can_produce_mana(remaining)
-            
-            return False
+        needed = dict(needed_mana)
         
+        # 1. Extract generic from needed
+        generic_needed = needed.pop(GENERIC_KEY, 0)
+        
+        # 2. Pay SIMPLE COLORED from pool first
+        colored_needed = {k: v for k, v in needed.items() if k != ManaColor.COLORLESS}
+        for color in list(colored_needed.keys()):
+            pool_amount = pool.get(color, 0)
+            if pool_amount >= colored_needed[color]:
+                colored_needed[color] = 0
+            else:
+                colored_needed[color] -= pool_amount
+        
+        # 3. Pay COLORLESS from pool
+        colorless_needed = needed.get(ManaColor.COLORLESS, 0)
+        
+        # Get available lands count (for both validation and payment)
+        available_lands = len(land_tapper.get_untapped_lands())
+        
+        # Track remaining pool that can be used for generic
+        remaining_pool = sum(pool.values())
+        
+        # Track lands used
+        lands_used_for_colored = 0
+        
+        # 4. Tap lands for COLORED (simple, not hybrid)
+        colored_still_needed = sum(v for v in colored_needed.values() if v > 0)
+        if colored_still_needed > 0:
+            if land_tapper.can_produce_mana(colored_needed):
+                lands_used_for_colored = colored_still_needed
+                if not dry_run:
+                    land_tapper.tap_lands_for_mana(colored_needed)
+            else:
+                return False
+        
+        # 5. Tap lands for COLORLESS
+        lands_used_for_colorless = 0
+        if colorless_needed > 0:
+            if land_tapper.can_produce_colorless(colorless_needed):
+                lands_used_for_colorless = colorless_needed
+                if not dry_run:
+                    land_tapper.tap_lands_for_colorless(colorless_needed)
+            else:
+                return False
+        
+        # 6. Tap lands for HYBRID
+        lands_used_for_hybrid = 0
         for hybrid_choice in hybrid_options:
-            remaining = dict(needed_mana)
-            generic_needed = remaining.pop(GENERIC_KEY, 0)
-            phyrexian_count = sum(1 for opts in hybrid_options if len(opts) == 1)
-            life_payment = phyrexian_count * 2
-            
-            # For hybrid, need to check if we can pay each hybrid
-            hybrid_needed = len(hybrid_options)
-            
-            # Count how many hybrid can be paid from pool
-            hybrid_from_pool = 0
+            # Try to pay hybrid from pool first
+            paid = False
             for color in hybrid_choice:
-                hybrid_from_pool += min(pool.get(color, 0), hybrid_needed)
+                if pool.get(color, 0) > 0:
+                    if not dry_run:
+                        pool[color] -= 1
+                    paid = True
+                    break
             
-            hybrid_still_needed = max(0, hybrid_needed - hybrid_from_pool)
-            
-            # For hybrid: need colored lands for each hybrid still needed
-            # For generic: can use any remaining land
-            # Total lands needed = hybrid_still_needed + generic_needed
-            total_lands_needed = hybrid_still_needed + generic_needed
-            
-            if total_lands_needed == 0:
-                return True
-            
-            # Check if pool can cover everything
-            total_pool = sum(pool.values())
-            if total_pool >= total_lands_needed:
-                return True
-            
-            # Need to use lands
-            untapped_count = len(land_tapper.get_untapped_lands())
-            
-            # Check if we can produce enough mana from lands
-            if untapped_count >= total_lands_needed:
-                # But we also need to verify we can produce the SPECIFIC colors for hybrid
-                if hybrid_still_needed > 0:
-                    # Check if we can produce hybrid colors from lands
-                    if land_tapper.can_produce_mana({c: 1 for c in hybrid_choice}, require_all=False):
-                        # After using lands for hybrid, can we still get generic?
-                        remaining_lands = untapped_count - hybrid_still_needed
-                        if remaining_lands >= generic_needed:
-                            return True
+            if not paid:
+                # Need to tap land for hybrid
+                if land_tapper.can_produce_mana({c: 1 for c in hybrid_choice}, require_all=False):
+                    lands_used_for_hybrid += 1
+                    if not dry_run:
+                        # Tap one land that can produce one of the hybrid colors
+                        land_tapper.tap_lands_for_hybrid(hybrid_choice)
                 else:
-                    # Only generic needed
-                    if land_tapper.can_produce_generic(generic_needed):
-                        return True
-            
-            if life_payment > 0 and player.life_total >= life_payment:
-                return True
+                    return False
+        
+        # 7. Tap lands for GENERIC (any remaining land OR remaining pool)
+        remaining_lands = available_lands - lands_used_for_colored - lands_used_for_colorless - lands_used_for_hybrid
+        
+        # Total resources for generic = remaining pool (any color) + remaining lands
+        total_generic_resources = remaining_pool + remaining_lands
+        
+        if total_generic_resources >= generic_needed:
+            # Deduct generic from pool first, then from lands
+            if not dry_run:
+                from_pool = min(remaining_pool, generic_needed)
+                from_lands = generic_needed - from_pool
+                # Pool already has the deduction done in steps 2-6 for colored/colorless
+                # Now tap lands for remaining generic
+                if from_lands > 0:
+                    land_tapper.tap_lands_for_generic(from_lands)
+            return True
         
         return False
     

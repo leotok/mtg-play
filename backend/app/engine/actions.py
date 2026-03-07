@@ -653,3 +653,80 @@ class LandTapper:
             tapped.append(land)
         
         return {ManaColor.COLORLESS: amount}
+    
+    def can_produce_colorless(self, amount: int) -> bool:
+        """Check if player can produce enough colorless mana from lands.
+        
+        Args:
+            amount: Amount of colorless mana needed
+            
+        Returns:
+            True if can produce, False otherwise
+        """
+        from app.engine.models import ManaColor
+        
+        if amount <= 0:
+            return True
+        
+        untapped = self.get_untapped_lands()
+        colorless_producing = [
+            land for land in untapped 
+            if ManaColor.COLORLESS in self._get_land_colors(land)
+        ]
+        return len(colorless_producing) >= amount
+    
+    def tap_lands_for_colorless(self, amount: int) -> dict:
+        """Tap lands that produce colorless mana.
+        
+        Args:
+            amount: Amount of colorless mana needed
+            
+        Returns:
+            Dictionary of colors produced
+            
+        Raises:
+            InsufficientResourcesError: If not enough colorless-producing lands available
+        """
+        from app.engine.models import ManaColor
+        
+        if amount <= 0:
+            return {}
+        
+        untapped = self.get_untapped_lands()
+        colorless_lands = [
+            land for land in untapped 
+            if ManaColor.COLORLESS in self._get_land_colors(land)
+        ]
+        
+        if len(colorless_lands) < amount:
+            raise Exception("Not enough colorless-producing lands")
+        
+        # Tap the lands
+        tapped = []
+        for land in colorless_lands[:amount]:
+            land.is_tapped = True
+            tapped.append(land)
+        
+        return {ManaColor.COLORLESS: amount}
+    
+    def tap_lands_for_hybrid(self, hybrid_colors: set) -> bool:
+        """Tap one land that can produce one of the hybrid colors.
+        
+        Args:
+            hybrid_colors: Set of colors that the hybrid mana can produce
+            
+        Returns:
+            True if land was tapped, False otherwise
+        """
+        from app.engine.models import ManaColor
+        
+        untapped = self.get_untapped_lands()
+        
+        for land in untapped:
+            land_colors = self._get_land_colors(land)
+            for color in hybrid_colors:
+                if color in land_colors:
+                    land.is_tapped = True
+                    return True
+        
+        return False

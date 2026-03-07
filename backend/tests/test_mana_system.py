@@ -471,6 +471,30 @@ class TestValidPlays:
         commander_play = next(p for p in valid_plays['plays'] if p['card_id'] == 30)
         assert commander_play['can_afford_mana'] == False
     
+    def test_commander_cost_exceeds_available_lands(self):
+        """
+        Scenario: Commander costs {3}{W}{W}, player has 4 lands
+        (2 white-producing, 2 colorless-producing)
+        Expected: CANNOT play - need 5 mana but only 4 lands
+        """
+        commander = create_card(30, "Spider-Man", CardZone.COMMANDER, 1, "{3}{W}{W}")
+        
+        # Reliquary Tower - colorless, Eiganjo - white, Plains - white, Rogue's Passage - colorless
+        reliquary = create_land(20, "Reliquary Tower", 1, "Land", oracle_text=None)
+        eiganjo = create_land(21, "Eiganjo", 1, "Land", oracle_text="{T}: Add {W}.")
+        plains = create_land(22, "Plains", 1, "Basic Land — Plains")
+        rogue = create_land(23, "Rogue's Passage", 1, "Land", oracle_text=None)
+        
+        game = create_game_with_player(
+            1, hand=[], battlefield=[reliquary, eiganjo, plains, rogue],
+            commander=[commander]
+        )
+        engine = GameEngine(game)
+        valid_plays = engine.get_valid_plays(1)
+        
+        commander_play = next(p for p in valid_plays['plays'] if p['card_id'] == 30)
+        assert commander_play['can_afford_mana'] == False
+    
     def test_commander_cost_with_generic(self):
         """
         Scenario: Commander costs {W}{W}{3}, player has 2 white + 3 generic
