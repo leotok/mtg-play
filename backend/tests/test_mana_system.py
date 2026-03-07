@@ -713,6 +713,52 @@ class TestEdgeCases:
         spell_play = next(p for p in valid_plays['plays'] if p['card_id'] == 10)
         assert spell_play['can_afford_mana'] == True
     
+    def test_mana_pool_decreased_after_play(self):
+        """
+        Scenario: Pool has mana, play a spell that uses it
+        Expected: Pool mana is decreased after playing
+        """
+        creature = create_card(10, "Goblin", CardZone.HAND, 1, "{R}")
+        land = create_land(20, "Mountain", 1, "Basic Land — Mountain")
+        
+        game = create_game_with_player(
+            1, hand=[creature], battlefield=[land],
+            mana_pool={ManaColor.RED: 1}
+        )
+        
+        engine = GameEngine(game)
+        
+        player_before = engine.game_state.players[0]
+        assert player_before.mana_pool.get(ManaColor.RED, 0) == 1
+        
+        engine.play_card(10, CardZone.BATTLEFIELD)
+        
+        player_after = engine.game_state.players[0]
+        assert player_after.mana_pool.get(ManaColor.RED, 0) == 0
+    
+    def test_mana_pool_colorless_decreased_after_play(self):
+        """
+        Scenario: Pool has colorless mana, play a spell that uses it
+        Expected: Pool colorless is decreased after playing
+        """
+        creature = create_card(10, "Goblin", CardZone.HAND, 1, "{1}")
+        land = create_land(20, "Mountain", 1, "Basic Land — Mountain")
+        
+        game = create_game_with_player(
+            1, hand=[creature], battlefield=[land],
+            mana_pool={ManaColor.COLORLESS: 2}
+        )
+        
+        engine = GameEngine(game)
+        
+        player_before = engine.game_state.players[0]
+        assert player_before.mana_pool.get(ManaColor.COLORLESS, 0) == 2
+        
+        engine.play_card(10, CardZone.BATTLEFIELD)
+        
+        player_after = engine.game_state.players[0]
+        assert player_after.mana_pool.get(ManaColor.COLORLESS, 0) == 1
+    
     def test_only_active_player_can_cast(self):
         """
         Scenario: Non-active player tries to get valid plays

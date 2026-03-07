@@ -400,13 +400,21 @@ class GameEngine:
         colored_needed = {k: v for k, v in needed.items() if k != ManaColor.COLORLESS}
         for color in list(colored_needed.keys()):
             pool_amount = pool.get(color, 0)
-            if pool_amount >= colored_needed[color]:
-                colored_needed[color] = 0
-            else:
-                colored_needed[color] -= pool_amount
+            deduct = min(pool_amount, colored_needed[color])
+            if not dry_run and deduct > 0:
+                pool[color] -= deduct
+            colored_needed[color] -= deduct
         
         # 3. Pay COLORLESS from pool
         colorless_needed = needed.get(ManaColor.COLORLESS, 0)
+        pool_colorless = pool.get(ManaColor.COLORLESS, 0)
+        if pool_colorless >= colorless_needed:
+            if not dry_run:
+                pool[ManaColor.COLORLESS] = pool_colorless - colorless_needed
+        else:
+            colorless_needed -= pool_colorless
+            if not dry_run:
+                pool[ManaColor.COLORLESS] = 0
         
         # Get available lands count (for both validation and payment)
         available_lands = len(land_tapper.get_untapped_lands())
@@ -470,8 +478,15 @@ class GameEngine:
             if not dry_run:
                 from_pool = min(remaining_pool, generic_needed)
                 from_lands = generic_needed - from_pool
-                # Pool already has the deduction done in steps 2-6 for colored/colorless
-                # Now tap lands for remaining generic
+                # Actually deduct from pool
+                if from_pool > 0:
+                    remaining = from_pool
+                    for color in list(pool.keys()):
+                        if remaining <= 0:
+                            break
+                        deduct = min(pool[color], remaining)
+                        pool[color] -= deduct
+                        remaining -= deduct
                 if from_lands > 0:
                     land_tapper.tap_lands_for_generic(from_lands)
             return True
