@@ -47,6 +47,8 @@ MANA_SYMBOL_MAP = {
     "C": ManaColor.COLORLESS,
 }
 
+GENERIC_KEY = "generic"
+
 
 def parse_mana_cost(mana_cost: Optional[str]) -> Tuple[Dict[ManaColor, int], List[Set[ManaColor]]]:
     """Parse a MTG mana cost string into a dictionary of color amounts and hybrid options.
@@ -77,7 +79,7 @@ def parse_mana_cost(mana_cost: Optional[str]) -> Tuple[Dict[ManaColor, int], Lis
         symbol = symbol.strip('{}')
         
         if symbol.isdigit():
-            result[ManaColor.COLORLESS] = result.get(ManaColor.COLORLESS, 0) + int(symbol)
+            result[GENERIC_KEY] = result.get(GENERIC_KEY, 0) + int(symbol)
         elif symbol in MANA_SYMBOL_MAP:
             color = MANA_SYMBOL_MAP[symbol]
             result[color] = result.get(color, 0) + 1
@@ -93,7 +95,7 @@ def parse_mana_cost(mana_cost: Optional[str]) -> Tuple[Dict[ManaColor, int], Lis
                     if color != ManaColor.COLORLESS:
                         hybrid_colors.add(color)
                 elif part.isdigit():
-                    result[ManaColor.COLORLESS] = result.get(ManaColor.COLORLESS, 0) + int(part)
+                    result[GENERIC_KEY] = result.get(GENERIC_KEY, 0) + int(part)
             
             if len(hybrid_colors) >= 2:
                 hybrid_options.append(hybrid_colors)

@@ -27,7 +27,7 @@ from app.schemas.game_state import (
 from app.services.scryfall import get_scryfall_service
 from app.engine.game_engine import create_engine_from_db, sync_engine_to_db
 from app.engine.models import MoveCardInput, ManaColor
-from app.engine.exceptions import TooManyLandsError, InvalidPhaseForLandError
+from app.engine.exceptions import TooManyLandsError, InvalidPhaseForLandError, InsufficientResourcesError
 from app.engine.land_utils import get_land_colors
 from app.socket import get_sio
 import logging

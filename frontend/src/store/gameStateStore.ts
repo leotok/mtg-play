@@ -131,8 +131,9 @@ export const useGameStateStore = create<GameStateStore>((set) => ({
       }
     } catch (err: any) {
       const errorData = err.response?.data?.detail;
-      if (errorData && typeof errorData === 'object' && errorData.message) {
-        set({ toast: { message: errorData.message, isVisible: true }, isLoading: false, hoveredCard: null });
+      if (errorData) {
+        const message = typeof errorData === 'string' ? errorData : errorData.message;
+        set({ toast: { message, isVisible: true }, isLoading: false, hoveredCard: null });
       } else {
         set({ toast: { message: 'Failed to play card', isVisible: true }, isLoading: false, hoveredCard: null });
       }

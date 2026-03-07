@@ -590,7 +590,11 @@ class LandTapper:
         
         if colorless_mana > 0:
             remaining_colorless = colorless_mana
-            for land in untapped_sorted:
+            colorless_producing_lands = [
+                land for land in untapped_sorted 
+                if ManaColor.COLORLESS in self._get_land_colors(land)
+            ]
+            for land in colorless_producing_lands:
                 if remaining_colorless <= 0:
                     break
                 if not land.is_tapped:
@@ -600,3 +604,46 @@ class LandTapper:
                 return False
         
         return True
+    
+    def can_produce_generic(self, amount: int) -> bool:
+        """Check if player can produce enough generic mana from lands.
+        
+        Args:
+            amount: Amount of generic mana needed
+            
+        Returns:
+            True if can produce, False otherwise
+        """
+        if amount <= 0:
+            return True
+        
+        untapped = self.get_untapped_lands()
+        return len(untapped) >= amount
+    
+    def tap_lands_for_generic(self, amount: int) -> dict:
+        """Tap any lands to produce generic mana.
+        
+        Args:
+            amount: Amount of generic mana needed
+            
+        Returns:
+            Dictionary of colors produced
+            
+        Raises:
+            InsufficientResourcesError: If not enough lands available
+        """
+        if amount <= 0:
+            return {}
+        
+        untapped = self.get_untapped_lands()
+        
+        if len(untapped) < amount:
+            raise Exception("Not enough lands to produce generic mana")
+        
+        # Tap any lands (they produce generic mana regardless of color)
+        tapped = []
+        for land in untapped[:amount]:
+            land.is_tapped = True
+            tapped.append(land)
+        
+        return {ManaColor.COLORLESS: amount}
