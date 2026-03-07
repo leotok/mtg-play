@@ -72,6 +72,8 @@ const GamePage: React.FC = () => {
     availableColors: string[];
   }>({ isOpen: false, cardId: null, position: { x: 0, y: 0 }, availableColors: [] });
 
+  const [pendingDropPosition, setPendingDropPosition] = useState<{ x: number; y: number } | null>(null);
+
   const battlefieldRef = React.useRef<HTMLDivElement>(null);
   const handRef = React.useRef<HTMLDivElement>(null);
   const commanderRef = React.useRef<HTMLDivElement>(null);
@@ -466,6 +468,7 @@ const GamePage: React.FC = () => {
           if (dragState.sourceZone === 'hand' || dragState.sourceZone === 'commander') {
             const localX = x - bfRect.left - dragState.mouseOffset.x;
             const localY = y - bfRect.top - dragState.mouseOffset.y;
+            setPendingDropPosition({ x: localX, y: localY });
             await playCard(gameIdNum, dragState.cardId, localX, localY);
             await fetchValidPlays(gameIdNum);
             setDragState(null);
@@ -746,9 +749,12 @@ const GamePage: React.FC = () => {
           sides={sideSelection.sides}
           onSelect={(sideIndex) => {
             if (gameId) {
-              playCard(parseInt(gameId), sideSelection.card_id, undefined, undefined, sideIndex).then(() => {
+              const dropX = pendingDropPosition?.x;
+              const dropY = pendingDropPosition?.y;
+              playCard(parseInt(gameId), sideSelection.card_id, dropX, dropY, sideIndex).then(() => {
                 fetchValidPlays(parseInt(gameId));
               });
+              setPendingDropPosition(null);
             }
             clearSideSelection();
           }}
